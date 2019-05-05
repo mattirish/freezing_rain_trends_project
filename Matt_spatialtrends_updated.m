@@ -50,23 +50,23 @@ load b.mat %contains b, the full dataset of FZRA events for each station. *fixed
 %% Initial mapping and wind map
 %Specify a map area of interest (the bounds of our map):
 lat_lim = [38 50]; %deg N
-lon_lim = [-95 -71]; %deg W
-%lat_lim = [39.5 50]; %deg N
-%lon_lim = [-94 -72.5]; %deg W
-
+lon_lim = [-96 -72]; %deg W
 
 %Import the shapefile:
 states = shaperead('usastatehi','UseGeoCoords',true);
-provinces = shaperead('province','UseGeoCoords',true);
+provinces = shaperead('shapefiles/province','UseGeoCoords',true);
+mexstates = shaperead('shapefiles/mexstates','UseGeoCoords',true);
 
 %Let's plot this along with the stations to make sure we've got the coastline situated correctly.
 figure(1)
-worldmap(lat_lim,lon_lim) %plots empty axes
+ax = worldmap(lat_lim,lon_lim) %plots empty axes
 title('Wind During FZRN Events in the Great Lakes');
 geoshow(states,'FaceColor',[.5 1 .5])
 geoshow(provinces,'FaceColor',[.5 1 .5])
 framem('ffacecolor',[.5 .7 .9]); %shows water as blue
 plotm(a.StationLocations(:,1),a.StationLocations(:,2),'r+') %plots measurement stations with red star
+% mstruct = gcm; %can check current projection with this. worldmap makes it
+% an 'eqdconic'. Maybe change out for Albers Great Lakes
 %Fix the wind dirs:
 %quiverm(a.StationLocations(:,1)',a.StationLocations(:,2)',cosd(-a.WindDir).*a.WindSpeed,sind(-a.WindDir).*a.WindSpeed,0.05);
 
@@ -208,8 +208,8 @@ fzramap = (fzramap2 - fzramap1)./fzramap1.*100;
 % us_boundary = 2*ones(size(fzrnmap));
 % us_boundary(2:end,2:end) = boundary_matrix;
 
-lat_plot = [39.5 50]; %deg N
-lon_plot = [-94 -73]; %deg W
+lat_plot = [38 50]; %deg N
+lon_plot = [-96 -72]; %deg W
 
 %Plot the map! She's gonna be beautiful.
 figure(2)
@@ -261,7 +261,7 @@ circleareas = (freqs2-freqs1)./freqs1*100;
 scatterm(a.StationLocations(:,1),a.StationLocations(:,2),250,circleareas,'filled')
 
 %Plot sizing stations by how many storms they've participated in:
-scatterm(a.StationLocations(:,1),a.StationLocations(:,2),250,sum(event_stationcounts),'filled')
+% scatterm(a.StationLocations(:,1),a.StationLocations(:,2),250,sum(event_stationcounts),'filled')
 
 %Or size stations by how many nonevent hours they've hosted:
 for m = 1:97
@@ -352,6 +352,10 @@ for m = 1:97
 end
 
 autocorrelated = median(rautocorr,'omitnan')
+
+sizecoeff = 700;
+scatterm(a.StationLocations(:,1),a.StationLocations(:,2),500*(1-pvals),rautocorr,'filled')
+
 
 %% Statistical significance analysis:
 
