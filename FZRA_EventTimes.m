@@ -32,6 +32,11 @@ function [ event_times, event_ids, event_spd, event_spd_std, event_precip, event
 %% Load all times at all stations where FZRA was reported and sort them 
 %  into ascending order, keeping duplicates.
 
+
+
+
+
+
 %Load historical freezing rain reports
 load b.mat %contains b, the full dataset for each station.
 

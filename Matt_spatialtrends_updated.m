@@ -1,12 +1,13 @@
 %% Matt_spatialtrends_updated.m
-% Updated August 2018
+% Updated May 2019
+
+%For AMS journal submission:
+set(0,'DefaultAxesFontName', 'Helvetica');
 
 %load a_allstations2.mat %contains all the frequency and spatial data for each region as structures
 load a_all.mat %contains a, the batch summary data for all 98 stations
 %load b_fixedcoords.mat %contains b, the full dataset of FZRA events for each station.
 load b.mat %contains b, the full dataset of FZRA events for each station. *fixed b file. coords are fixed too. can prob delete b_fixedcoords
-%coords are NOT fixed in this version! Re-fix them. prob just run through
-%and sub station coords from a.mat?
 
 %load numobsperyear.mat %contains number of observations per year at each station for each region
 
@@ -231,7 +232,7 @@ geoshow(states,'FaceAlpha',0)
 geoshow(provinces,'FaceAlpha',0)
 c = colorbar
 c.FontSize = 22
-c.FontName = 'Gill Sans MT'
+%c.FontName = 'Gill Sans MT'
 hold on
 %title('Change in No. Hourly FZRA Reports per Year from 1976-1985 to 2000-2014 Period Avgs.')
 %geoshow(fzrnmap,fzrn_ref,'DisplayType','contour')
@@ -322,7 +323,7 @@ scatterm(a.StationLocations(:,1),a.StationLocations(:,2),500*(1-pvals),hourspery
 %scatterm(a.StationLocations(:,1),a.StationLocations(:,2),500*(1-sig),sen_percent,'filled')
 c = colorbar
 c.FontSize = 22
-c.FontName = 'Gill Sans MT'
+%c.FontName = 'Gill Sans MT'
 ypercentages = get(c,'YTickLabel');
 perc = repmat('%',size(ypercentages,1),1);
 ypercentages = strcat(ypercentages, perc);
@@ -333,11 +334,6 @@ title('Linear Trend in Freezing Rain (2000-2014)')
 
 figure(1000)
 plot(pvals)
-
-
-
-
-
 
 
 
@@ -473,11 +469,14 @@ for z = 1:97
 end
 
 
-figure(14)
-boxplot([MonthFreqrel(:,10:12)*100 MonthFreqrel(:,1:5)*100])
+figure(16)
+%boxplot([MonthFreqrel(:,10:12)*100 MonthFreqrel(:,1:5)*100])
+violinplot([MonthFreqrel(:,10:12)*100 MonthFreqrel(:,1:5)*100])
 set(gca, 'XTick',1:8, 'XTickLabel',{'Oct' 'Nov' 'Dec' 'Jan' 'Feb' 'Mar' 'Apr' 'May'})
 ylabel('Relative Frequency (%)')
 grid on
+hold on
+line(1:8,median([MonthFreqrel(:,10:12)*100 MonthFreqrel(:,1:5)*100]))
 
 
 %Save for comp.
@@ -549,7 +548,7 @@ scatterm(a.StationLocations(:,1),a.StationLocations(:,2),500*(1-sig),sen_percent
 plotm(a.StationLocations(sig<0.05,1),a.StationLocations(sig<0.05,2),'gx') %plots measurement stations
 c = colorbar
 c.FontSize = 18
-c.FontName = 'Gill Sans MT'
+%c.FontName = 'Gill Sans MT'
 ypercentages = get(c,'YTickLabel');
 perc = repmat('%',size(ypercentages,1),1);
 ypercentages = strcat(ypercentages, perc);

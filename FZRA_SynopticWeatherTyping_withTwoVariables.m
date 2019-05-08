@@ -159,13 +159,13 @@ while(m < length(event_times_case))% should be length(event_ids)) for a full run
     %Download these maps to be representative of this event.
     prmsl_anom(:,:,iter) = nc_varget(url_prmsl,'prmsl',[prmsl_indextoplot yinds xindw],[1 yindn xinde]); %format is (time,y,x)
     airtemp(:,:,iter) = nc_varget(url_airtemp,'air',[prmsl_indextoplot yinds xindw],[1 yindn xinde]); %format is (time,y,x)
-    %hgt850_anom(:,:,iter) = nc_varget(url_hgt850,'hgt',[hgt_indextoplot 6 yinds xindw],[1 1 yindn xinde]); %format is (time,level,y,x)
+    hgt850_anom(:,:,iter) = nc_varget(url_hgt850,'hgt',[hgt_indextoplot 6 yinds xindw],[1 1 yindn xinde]); %format is (time,level,y,x)
     hgt1000_anom(:,:,iter) = nc_varget(url_hgt,'hgt',[hgt_indextoplot 0 yinds xindw],[1 1 yindn xinde]); %format is (time,level,y,x)
     hgt500_anom(:,:,iter) = nc_varget(url_hgt,'hgt',[hgt_indextoplot 16 yinds xindw],[1 1 yindn xinde]); %format is (time,level,y,x)
     
     %Subtract out the mean for this month:
     prmsl_anom(:,:,iter) = prmsl_anom(:,:,iter) - prmsl_monthly_avg(:,:,str2double(datestr(dates(iter),'mm')));
-    %hgt850_anom(:,:,iter) = hgt850_anom(:,:,iter) - hgt850_monthly_avg(:,:,str2double(datestr(dates(iter),'mm')));
+    hgt850_anom(:,:,iter) = hgt850_anom(:,:,iter) - hgt850_monthly_avg(:,:,str2double(datestr(dates(iter),'mm')));
     hgt1000_anom(:,:,iter) = hgt1000_anom(:,:,iter) - hgt1000_monthly_avg(:,:,str2double(datestr(dates(iter),'mm')));
     hgt500_anom(:,:,iter) = hgt500_anom(:,:,iter) - hgt500_monthly_avg(:,:,str2double(datestr(dates(iter),'mm')));
     
@@ -306,6 +306,7 @@ lon_lim = [-105 -60]; %deg W
 %Import the shapefile:
 states = shaperead('usastatehi','UseGeoCoords',true);
 provinces = shaperead('province','UseGeoCoords',true);
+mexstates = shaperead('shapefiles/mexstates','UseGeoCoords',true);
 
 figure(5)
 %Loop through to do all four plots:
@@ -315,6 +316,7 @@ for z = 1:4
     cptcmap('SVS_tempanomaly', 'mapping', 'scaled','flip',true);
     geoshow(states,'FaceColor',[1 1 1]);
     geoshow(provinces,'FaceColor',[1 1 1]);
+    geoshow(mexstates,'FaceColor',[1 1 1]);
     %pcolorm(lat,lon,prmsl,'FaceAlpha',0.8)
     
     %Plot MSL pressure:
@@ -380,20 +382,20 @@ Xhgt850 = reshape(hgt850_anom,size(hgt850_anom,1)*size(hgt850_anom,2),size(hgt85
 X = [Xprmsl;Xhgt850];
 % Xhgt1000500 = reshape(hgt1000500_anom,size(hgt1000500_anom,1)*size(hgt1000500_anom,2),size(hgt1000500_anom,3));
 % X = [Xprmsl;Xhgt1000500];
-[IDX centroids] = kmeans(X', numclusters);
+[IDX centroids] = kmeans(X', numclusters,'Replicates',10);
 %Try it with k-medoids! (Prob will be too slow):
 % tic
 % [IDX centroids] = kmedoids(X', numclusters);
 % toc
 
-%%%%%%%OR create a self-organizing map with nctool and then do a k-means on
-%%%%%%%THAT. See if we get better performance. If we do, we can redo the
-%%%%%%%station clustering too and bootstrap the kmeans for robustness.
-%nctool
-load test_net_SOM
-X = cell2mat(net.IW)';
-[IDX centroids] = kmeans(X',numclusters);
-%%%%%End of that little bit. Proceed as you were:
+% %%%%%%%OR create a self-organizing map with nctool and then do a k-means on
+% %%%%%%%THAT. See if we get better performance. If we do, we can redo the
+% %%%%%%%station clustering too and bootstrap the kmeans for robustness.
+% %nctool
+% load test_net_SOM
+% X = cell2mat(net.IW)';
+% [IDX centroids] = kmeans(X',numclusters);
+% %%%%%End of that little bit. Proceed as you were:
 
 %Reshape the vectors into maps:
 for m = 1:numclusters
@@ -403,9 +405,9 @@ for m = 1:numclusters
     m
 end
 
-%Plot a silhouette plot to inspect whether or not 3 clusters was best:
-figure(52)
-silhouette(X',IDX)
+% %Plot a silhouette plot to inspect whether or not 3 clusters was best:
+% figure(52)
+% silhouette(X',IDX)
 
 
 %Create centroids for the surface air temperature so that we can plot the 0
@@ -417,19 +419,22 @@ end
 %%%%%%%%%%%%%%%%%%Good plot:
 %Import the shapefile:
 states = shaperead('usastatehi','UseGeoCoords',true);
-provinces = shaperead('province','UseGeoCoords',true);
-lat_lim = [25 60]; %deg N
+provinces = shaperead('shapefiles/province','UseGeoCoords',true);
+mexstates = shaperead('shapefiles/mexstates','UseGeoCoords',true);
+lat_lim = [30 55]; %deg N
 lon_lim = [-105 -60]; %deg W
 
-figure(5)
+figure(6)
 %Loop through to do all three cluster plots:
 for z = 1:3
     subplot(2,2,z)
     worldmap(lat_lim,lon_lim)
+    setm(gca,'mapprojection','eqaconic')
     cptcmap('SVS_tempanomaly', 'mapping', 'scaled','flip',true);
 
     geoshow(states,'FaceColor',[1 1 1]);
     geoshow(provinces,'FaceColor',[1 1 1]);
+    geoshow(mexstates,'FaceColor',[1 1 1]);
     %pcolorm(lat,lon,prmsl,'FaceAlpha',0.8)
     
     %Plot MSL pressure:
@@ -490,9 +495,9 @@ xlabel(c,'MSL Pressure Anomaly (mb)')
 %% Add new clusters by computing distance to the centroids. Then analyze the change in prevalence over time. 
 % load prmsl_anom_19791996
 % load IDX_and_X
-load data19791996
+%load data19791996
 %load prmsl_anom_19982014 %has _recent appended to all variable names
-load data19972014  %has _recent appended to all variable names
+%load data19972014  %has _recent appended to all variable names
 
 %Loop through each new event, and assign it to the smallest distance
 %centroid:
@@ -633,8 +638,9 @@ end
 %% Now, cluster the stations based off their breakdowns. Will they give regional identities?
 %Prob not very well. But ya gotta try.
 numclusters = 5;
-[IDX_stations centroids_stations] = kmeans(clusterpct, numclusters);
-
+tic
+[IDX_stations centroids_stations] = kmeans(clusterpct, numclusters,'Replicates',1000);
+toc
 
 %%%%%%%%%%%%%OR we can do it with a time bias where we let time be included
 %%%%%%%%%%%%%as a factor in the clustering. So not only will the stations
@@ -654,7 +660,7 @@ silhouette(event_stationcounts',IDX_stations)
 %eva = evalclusters(event_stationcounts,'kmeans','CalinskiHarabasz','KList',[1:6])
 
 %Plot a silhouette plot to inspect whether or not 5 clusters was best:
-figure(50)
+figure(51)
 silhouette(clusterpct,IDX_stations)
 
 % %Now we're gonna create our own SIXTH CATEGORY for the NYC-Long Island
@@ -665,9 +671,9 @@ silhouette(clusterpct,IDX_stations)
 % colorz(6,:) = [255,127,80]/255;
 
 %Plot the points in 3d so we can see if the clusters make sense:
-figure(22)
+figure(23)
 for k = 1:numclusters + 1  %plus one for our additional NYC Category
-    %colorz(k,:) = rand(1,3); %Use the loaded colors if you've loaded results
+    colorz(k,:) = rand(1,3); %Use the loaded colors if you've loaded results
     %plot3(clusterpct(IDX_stations==k,1),clusterpct(IDX_stations==k,2),clusterpct(IDX_stations==k,3),'o','color',colorz(k,:),'LineStyle','none','LineWidth',3)
     %plot(clusterpct(IDX_stations==k,3),clusterpct(IDX_stations==k,1),'o','color',colorz(k,:),'LineStyle','none','LineWidth',3)
     plot3(clusterpct(IDX_stations==k,1),clusterpct(IDX_stations==k,2),clusterpct(IDX_stations==k,3),'o','color',colorz(k,:),'LineStyle','none','LineWidth',3)
@@ -681,7 +687,7 @@ axis vis3d
 grid on
 
 %plot the stations by their cluster identities:
-figure(1)
+figure(2)
 worldmap(lat_lim,lon_lim) %plots empty axes
 %title('Regional Classification from Synoptic Clustering');
 geoshow(states,'FaceColor',[1 1 1])

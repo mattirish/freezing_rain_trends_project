@@ -28,7 +28,6 @@ lon_lim = [-95 -71]; %deg W
 %FZRA_SynopticWeatherTyping.m.
 load latslons_subregion_for_PCA
 
-
 %% Reduce the domain of the monthlies down to our chosen region.
 %prmsl_monthly_avg = prmsl_monthly_avg(xindw+1:xindw+xinde,yinds+1:yinds+yindn,:);
 % %Rearrange so that it goes y,x,time:
@@ -87,12 +86,12 @@ end
 %Chop off the first three years of events from the output of
 %FZRA_EventTimes:
 event_ids = event_ids(event_times >= datetime(1979,1,1) & event_times < datetime(2015,1,1));
-event_pct_lightFZRA = event_pct_lightFZRA(event_times >= datetime(1979,1,1) & event_times < datetime(2015,1,1));
-event_precip = event_precip(event_times >= datetime(1979,1,1) & event_times < datetime(2015,1,1));
-event_precip_std = event_precip_std(event_times >= datetime(1979,1,1) & event_times < datetime(2015,1,1));
-event_spd = event_spd(event_times >= datetime(1979,1,1) & event_times < datetime(2015,1,1));
-event_spd_std = event_spd_std(event_times >= datetime(1979,1,1) & event_times < datetime(2015,1,1));
-event_stationcounts = event_stationcounts(event_times >= datetime(1979,1,1) & event_times < datetime(2015,1,1));
+% event_pct_lightFZRA = event_pct_lightFZRA(event_times >= datetime(1979,1,1) & event_times < datetime(2015,1,1));
+% event_precip = event_precip(event_times >= datetime(1979,1,1) & event_times < datetime(2015,1,1));
+% event_precip_std = event_precip_std(event_times >= datetime(1979,1,1) & event_times < datetime(2015,1,1));
+% event_spd = event_spd(event_times >= datetime(1979,1,1) & event_times < datetime(2015,1,1));
+% event_spd_std = event_spd_std(event_times >= datetime(1979,1,1) & event_times < datetime(2015,1,1));
+% event_stationcounts = event_stationcounts(event_times >= datetime(1979,1,1) & event_times < datetime(2015,1,1));
 
 %Create a list of URLs for mean sea level pressure (Pa) and any other variables we'll include:
 url_prmsl = [repmat('http://www.esrl.noaa.gov/psd/thredds/dodsC/Datasets/NARR/monolevel/prmsl.',length(event_ids),1),datestr(event_times_case,'yyyy'),repmat('.nc',length(event_ids),1)];
@@ -375,7 +374,7 @@ xlabel(c,'MSL Pressure Anomaly (mb)')
 %% GET THAT K-MEANS:
 numclusters = 3;
 X = [Xprmsl;Xhgt1000500];
-[IDX centroids] = kmeans(X', numclusters);
+[IDX centroids] = kmeans(X', numclusters,'Replicates',100);
 %Try it with k-medoids! (Prob will be too slow):
 % tic
 % [IDX centroids] = kmedoids(X', numclusters);
