@@ -311,10 +311,10 @@ worldmap(lat_lim,lon_lim)
 cptcmap('SVS_tempanomaly', 'mapping', 'scaled');
 c = colorbar; 
 
-geoshow(states,'FaceColor',[.8 .8 .8])
+geoshow(states,'FaceColor',[1 1 1])
 hold on
-geoshow(provinces,'FaceColor',[.8 .8 .8])
-framem('ffacecolor',[.5 .7 .9]); %shows water as blue
+geoshow(provinces,'FaceColor',[1 1 1])
+framem('ffacecolor',[0.95 0.95 0.95]); %shows water as blue
 %geoshow(fzramap,fzra_ref,'DisplayType','texturemap','FaceAlpha',0.8)
 plotm(a.StationLocations(:,1),a.StationLocations(:,2),'r+') %plots measurement stations
 
@@ -446,7 +446,7 @@ ylabel('Total Yearly Hrs. of FZRA')
 %Years:
 % startyear = 1976;
 % endyear = 1996;
-startyear = 1997;
+startyear = 2000;
 endyear = 2014;
 startyear = startyear - 1976;
 endyear = endyear - 1976;
@@ -469,15 +469,18 @@ for z = 1:97
 end
 
 
-figure(16)
+figure(19)
 %boxplot([MonthFreqrel(:,10:12)*100 MonthFreqrel(:,1:5)*100])
-violinplot([MonthFreqrel(:,10:12)*100 MonthFreqrel(:,1:5)*100])
+
+%c = get(gca,'colororder') ; %save the color order for repetition of this plot
+set(gca,'ColorOrder',c)
+h = violinplot([MonthFreqrel(:,10:12)*100 MonthFreqrel(:,1:5)*100])
 set(gca, 'XTick',1:8, 'XTickLabel',{'Oct' 'Nov' 'Dec' 'Jan' 'Feb' 'Mar' 'Apr' 'May'})
 ylabel('Relative Frequency (%)')
 grid on
 hold on
 line(1:8,median([MonthFreqrel(:,10:12)*100 MonthFreqrel(:,1:5)*100]))
-
+set(gca,'FontSize',16)
 
 %Save for comp.
 MonthFreqrel1 = MonthFreqrel;

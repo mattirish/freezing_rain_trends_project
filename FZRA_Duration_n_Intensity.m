@@ -4,9 +4,9 @@ load a_all
 load b
 stationnames = fieldnames(b);
 
-%Import station regional cluster identities, too:
-load clusters_n_k5stationclusters_BETTER_plus_NYC_6thcluster
-load eventtimesoutput_343
+% %Import station regional cluster identities, too:
+% load clusters_n_k5stationclusters_BETTER_plus_NYC_6thcluster
+% load eventtimesoutput_343
 
 %Need "dates" vector from FZRA_SynopticWeatherTyping first before running
 %this!

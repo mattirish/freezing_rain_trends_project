@@ -300,8 +300,8 @@ plot(SCORE(:,1),SCORE(:,2))
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%Make good PC plots.
 %Map boundaries. Make 'em wide
-lat_lim = [25 60]; %deg N
-lon_lim = [-105 -60]; %deg W
+lat_lim = [30 55]; %deg N
+lon_lim = [-105 -65]; %deg W
 
 %Import the shapefile:
 states = shaperead('usastatehi','UseGeoCoords',true);
@@ -375,6 +375,11 @@ xlabel(c,'MSL Pressure Anomaly (mb)')
 
 
 %% GET THAT K-MEANS:
+current_event_def = '43';
+
+load(strcat('maps_',current_event_def,'.mat'))
+
+
 numclusters = 3;
 Xprmsl = reshape(prmsl_anom_mb,size(prmsl_anom_mb,1)*size(prmsl_anom_mb,2),size(prmsl_anom_mb,3));
 
@@ -382,7 +387,7 @@ Xhgt850 = reshape(hgt850_anom,size(hgt850_anom,1)*size(hgt850_anom,2),size(hgt85
 X = [Xprmsl;Xhgt850];
 % Xhgt1000500 = reshape(hgt1000500_anom,size(hgt1000500_anom,1)*size(hgt1000500_anom,2),size(hgt1000500_anom,3));
 % X = [Xprmsl;Xhgt1000500];
-[IDX centroids] = kmeans(X', numclusters,'Replicates',10);
+[IDX centroids] = kmeans(X', numclusters,'Replicates',50);
 %Try it with k-medoids! (Prob will be too slow):
 % tic
 % [IDX centroids] = kmedoids(X', numclusters);
@@ -422,12 +427,20 @@ states = shaperead('usastatehi','UseGeoCoords',true);
 provinces = shaperead('shapefiles/province','UseGeoCoords',true);
 mexstates = shaperead('shapefiles/mexstates','UseGeoCoords',true);
 lat_lim = [30 55]; %deg N
-lon_lim = [-105 -60]; %deg W
+lon_lim = [-105 -65]; %deg W
 
 figure(6)
+x0=2;
+y0=2;
+width=24;
+height=8;
+set(gcf,'units','inches','position',[x0,y0,width,height])
+dim = [.1 .8 .1 .1];
+%annotation('textbox',dim,'String',current_event_def,'FitBoxToText','on','FontSize',48);
 %Loop through to do all three cluster plots:
 for z = 1:3
-    subplot(2,2,z)
+    
+    subplot(1,3,z)
     worldmap(lat_lim,lon_lim)
     setm(gca,'mapprojection','eqaconic')
     cptcmap('SVS_tempanomaly', 'mapping', 'scaled','flip',true);
@@ -466,6 +479,14 @@ for z = 1:3
     
     caxis([-20 20]) %kPa. Sets color ramp to the range of our region.
     
+
+    pause(1)
+    framem; gridm; tightmap;
+    pause(1)
+    pause(1)
+    framem; gridm; tightmap;
+    pause(1)
+    
     %Add the upper air geopotential heights as dotted lines:
     
     [Ca ha] = contourm(lat,lon,clustermaps_hgt(:,:,z),'LineWidth',2,'LineColor','k','LineStyle',':');
@@ -474,69 +495,63 @@ for z = 1:3
     %Lastly, add a 0 deg isotherm in a nice bold black:
     [Cb hb] = contourm(lat,lon,clustermaps_airtempcentroids(:,:,z),[273.15 273.15],'LineWidth',2,'LineColor','k');
     
-    pause(1)
-    framem; gridm; tightmap;
-    pause(1)
-    pause(1)
-    framem; gridm; tightmap;
-    pause(1)
 end
 
 %Add one big colorbar to the whole figure. Just add a small one and adjust
 %it.
-hp4 = get(subplot(2,2,3),'Position')
-c = colorbar('Position', [hp4(1)+hp4(3)+0.01  hp4(2)  0.1  hp4(2)+hp4(3)*2.1])
+hp4 = get(subplot(1,3,3),'Position')
+c = colorbar('Position', [hp4(1)+hp4(3)+0.012  hp4(2)*1.5  0.025  hp4(2)+hp4(3)*2.5])
 c.FontSize = 18
-c.FontName = 'Gill Sans MT'
+c.FontName = 'Helvetica'
 xlabel(c,'MSL Pressure Anomaly (mb)')
 
 
 
-%% Add new clusters by computing distance to the centroids. Then analyze the change in prevalence over time. 
-% load prmsl_anom_19791996
-% load IDX_and_X
-%load data19791996
-%load prmsl_anom_19982014 %has _recent appended to all variable names
-%load data19972014  %has _recent appended to all variable names
-
-%Loop through each new event, and assign it to the smallest distance
-%centroid:
-for m = 1:size(X_recent,2)
-    for centroidnum = 1:3
-        %distance(centroidnum) = sum(sqrt(X_recent(:,m).^2 + centroids(centroidnum,:)'.^2));
-        distance(centroidnum) = norm(X_recent(:,m) - centroids(centroidnum,:)');
-    end
-    [Y clusterpick] = min(distance);
-    IDX_recent_orig(m) = clusterpick;   %vector of classifications into the original cluster from the 1979-1996 period
-end
-
-%Plot this stuff
-figure(1000)
-scatter(dates,IDX)
-hold on
-grid on
-scatter(dates_recent,IDX_recent_orig)
-xlabel('Time (years)')
-ylabel('Cluster')
-
-figure(1001)
-% that = [sum(IDX == 1)/586*100  sum(IDX_recent_orig == 1)/625*100; ...
-%     sum(IDX == 2)/586*100  sum(IDX_recent_orig == 2)/625*100; ...
-%     sum(IDX == 3)/586*100  sum(IDX_recent_orig == 3)/625*100]
-that = [sum(IDX == 1)  sum(IDX_recent_orig == 1); ...
-    sum(IDX == 2)  sum(IDX_recent_orig == 2); ...
-    sum(IDX == 3)  sum(IDX_recent_orig == 3)]
-
-bar(that)
-ylabel('Number of Events')
-xlabel('Cluster')
-legend('1979-1996','1997-2014')
-grid on
-
-
-
-
-
+% %% Add new clusters by computing distance to the centroids. Then analyze the change in prevalence over time. 
+% % load prmsl_anom_19791996
+% % load IDX_and_X
+% %load data19791996
+% %load prmsl_anom_19982014 %has _recent appended to all variable names
+% %load data19972014  %has _recent appended to all variable names
+% 
+% %Loop through each new event, and assign it to the smallest distance
+% %centroid:
+% for m = 1:size(X_recent,2)
+%     for centroidnum = 1:3
+%         %distance(centroidnum) = sum(sqrt(X_recent(:,m).^2 + centroids(centroidnum,:)'.^2));
+%         distance(centroidnum) = norm(X_recent(:,m) - centroids(centroidnum,:)');
+%     end
+%     [Y clusterpick] = min(distance);
+%     IDX_recent_orig(m) = clusterpick;   %vector of classifications into the original cluster from the 1979-1996 period
+% end
+% 
+% %Plot this stuff
+% figure(1000)
+% scatter(dates,IDX)
+% hold on
+% grid on
+% scatter(dates_recent,IDX_recent_orig)
+% xlabel('Time (years)')
+% ylabel('Cluster')
+% 
+% figure(1001)
+% % that = [sum(IDX == 1)/586*100  sum(IDX_recent_orig == 1)/625*100; ...
+% %     sum(IDX == 2)/586*100  sum(IDX_recent_orig == 2)/625*100; ...
+% %     sum(IDX == 3)/586*100  sum(IDX_recent_orig == 3)/625*100]
+% that = [sum(IDX == 1)  sum(IDX_recent_orig == 1); ...
+%     sum(IDX == 2)  sum(IDX_recent_orig == 2); ...
+%     sum(IDX == 3)  sum(IDX_recent_orig == 3)]
+% 
+% bar(that)
+% ylabel('Number of Events')
+% xlabel('Cluster')
+% legend('1979-1996','1997-2014')
+% grid on
+% 
+% 
+% 
+% 
+% 
 
 
 
@@ -549,89 +564,89 @@ grid on
 load a_all.mat
 load b.mat %contains b, the full dataset of FZRA events for each station. *fixed b file. coords are fixed too. can prob delete b_fixedcoords
 stationnames = fieldnames(b);
-%Specify a map area of interest (the bounds of our map):
-lat_lim = [38 50]; %deg N
-lon_lim = [-95 -71]; %deg W
+% %Specify a map area of interest (the bounds of our map):
+% lat_lim = [38 50]; %deg N
+% lon_lim = [-95 -71]; %deg W
 
 
 
-%% Plot pie charts at each location to show the relative number of storms in each of the three bins at each location.
-%First make clusterpct, a 97x3 matrix that shows the percentage of synoptic
-%forcing categories that makes up the storms at each station:
-%Loop through all events, matching their dates up with output from
-%FZRA_EventTimes and then giving a count to each station that participated
-%in the event.
-clusterpct = zeros(length(stationnames),numclusters);
-
-%This only assumes that dates are a subset of event_times
-for m = 1:length(dates)
-    dateindex = event_ids(dates(m) == event_times);   %finds the matching event ID
-    %Now add a count representing one event participated in for each
-    %station that participated in this event, under the right category:
-    clusterpct(~~event_stationcounts(dateindex,:),IDX(m)) = clusterpct(~~event_stationcounts(dateindex,:),IDX(m)) + 1;
-end
-
-%load clusters_n_k5stationclusters
-%load clusters_n_k5stationclusters_BETTER
-load clusters_n_k5stationclusters_BETTER_plus_NYC_6thcluster
-
-%We could normalize them all by percentage, but we could just leave them
-%and use their sum as a scaling for the size of the pie charts if we wanna
-%be obnoxious.
-
-%Plot the points in 3d so we can see if the clusters make sense:
-% figure(20)
-% plot3(clusterpct(:,1),clusterpct(:,2),clusterpct(:,3),'o','LineStyle','none')
-% xlabel('Arctic High & Cold Air Damming')
-% ylabel('Cyclone/Anticyclone')
-% zlabel('Occluded Front & Cold Air Trapping')
-% axis vis3d
-% view(90,0)
-% grid on
-
-figure(100)
-worldmap(lat_lim,lon_lim)
-colormap(parula)
-%caxis([-40, 40])
-geoshow(states,'FaceColor',[1 1 1])
-hold on
-geoshow(provinces,'FaceColor',[1 1 1])
-framem('ffacecolor',[.5 .7 .9]); %shows water as blue
-%plotm(a.StationLocations(:,1),a.StationLocations(:,2),'ko') %plots measurement stations
-
-%Plot coloring stations by how many storms they've participated in:
-%scatterm(a.StationLocations(:,1),a.StationLocations(:,2),250,sum(event_stationcounts),'filled')
-
-%colorbar
-hold on
-title('Category of Synoptic Storm Type by Location')
-
-%Loop through each station, creating and placing a pie chart:
-for station = 1:length(stationnames)
-    p = pie(clusterpct(station,:));     %where clusterpct is a 97 x 3 matrix
-    %p(1).Vertices
-    sc = 0.45; % <scaling factor (different for each city)
-    % Loop through each slice of the pie:
-    for k = 1:2:length(p)
-        % x,y coordinates of a slice:
-        tmp = p(k).Vertices;
-        % Scale the size of the slice:
-        tmp = tmp*sc;
-        % Place the center of the pie on its station:
-        tmp(:,1) = tmp(:,1)+b.(stationnames{station}).coords(1);
-        tmp(:,2) = tmp(:,2)+b.(stationnames{station}).coords(2);
-        
-        switch k
-            case 1 
-                patchm(tmp(:,1),tmp(:,2),[1 0.1 0.1]);
-            case 3
-                patchm(tmp(:,1),tmp(:,2),[0.75 0.75 0.1]);
-            case 5
-                patchm(tmp(:,1),tmp(:,2),[0.1 0.1 0.8]);
-        end
-    end
-    
-end
+% %% Plot pie charts at each location to show the relative number of storms in each of the three bins at each location.
+% %First make clusterpct, a 97x3 matrix that shows the percentage of synoptic
+% %forcing categories that makes up the storms at each station:
+% %Loop through all events, matching their dates up with output from
+% %FZRA_EventTimes and then giving a count to each station that participated
+% %in the event.
+% clusterpct = zeros(length(stationnames),numclusters);
+% 
+% %This only assumes that dates are a subset of event_times
+% for m = 1:length(dates)
+%     dateindex = event_ids(dates(m) == event_times);   %finds the matching event ID
+%     %Now add a count representing one event participated in for each
+%     %station that participated in this event, under the right category:
+%     clusterpct(~~event_stationcounts(dateindex,:),IDX(m)) = clusterpct(~~event_stationcounts(dateindex,:),IDX(m)) + 1;
+% end
+% 
+% %load clusters_n_k5stationclusters
+% %load clusters_n_k5stationclusters_BETTER
+% load clusters_n_k5stationclusters_BETTER_plus_NYC_6thcluster
+% 
+% %We could normalize them all by percentage, but we could just leave them
+% %and use their sum as a scaling for the size of the pie charts if we wanna
+% %be obnoxious.
+% 
+% %Plot the points in 3d so we can see if the clusters make sense:
+% % figure(20)
+% % plot3(clusterpct(:,1),clusterpct(:,2),clusterpct(:,3),'o','LineStyle','none')
+% % xlabel('Arctic High & Cold Air Damming')
+% % ylabel('Cyclone/Anticyclone')
+% % zlabel('Occluded Front & Cold Air Trapping')
+% % axis vis3d
+% % view(90,0)
+% % grid on
+% 
+% figure(100)
+% worldmap(lat_lim,lon_lim)
+% colormap(parula)
+% %caxis([-40, 40])
+% geoshow(states,'FaceColor',[1 1 1])
+% hold on
+% geoshow(provinces,'FaceColor',[1 1 1])
+% framem('ffacecolor',[.5 .7 .9]); %shows water as blue
+% %plotm(a.StationLocations(:,1),a.StationLocations(:,2),'ko') %plots measurement stations
+% 
+% %Plot coloring stations by how many storms they've participated in:
+% %scatterm(a.StationLocations(:,1),a.StationLocations(:,2),250,sum(event_stationcounts),'filled')
+% 
+% %colorbar
+% hold on
+% title('Category of Synoptic Storm Type by Location')
+% 
+% %Loop through each station, creating and placing a pie chart:
+% for station = 1:length(stationnames)
+%     p = pie(clusterpct(station,:));     %where clusterpct is a 97 x 3 matrix
+%     %p(1).Vertices
+%     sc = 0.45; % <scaling factor (different for each city)
+%     % Loop through each slice of the pie:
+%     for k = 1:2:length(p)
+%         % x,y coordinates of a slice:
+%         tmp = p(k).Vertices;
+%         % Scale the size of the slice:
+%         tmp = tmp*sc;
+%         % Place the center of the pie on its station:
+%         tmp(:,1) = tmp(:,1)+b.(stationnames{station}).coords(1);
+%         tmp(:,2) = tmp(:,2)+b.(stationnames{station}).coords(2);
+%         
+%         switch k
+%             case 1 
+%                 patchm(tmp(:,1),tmp(:,2),[1 0.1 0.1]);
+%             case 3
+%                 patchm(tmp(:,1),tmp(:,2),[0.75 0.75 0.1]);
+%             case 5
+%                 patchm(tmp(:,1),tmp(:,2),[0.1 0.1 0.8]);
+%         end
+%     end
+%     
+% end
 
 
 
@@ -642,20 +657,20 @@ tic
 [IDX_stations centroids_stations] = kmeans(clusterpct, numclusters,'Replicates',1000);
 toc
 
-%%%%%%%%%%%%%OR we can do it with a time bias where we let time be included
-%%%%%%%%%%%%%as a factor in the clustering. So not only will the stations
-%%%%%%%%%%%%%be clustered by the percentage of participation overall in
-%%%%%%%%%%%%%the three storm types, but they'll be selected to be near
-%%%%%%%%%%%%%stations that they experienced each storm with. Wait, this is
-%%%%%%%%%%%%%a whole different way to classify them. It's just based off of
-%%%%%%%%%%%%%which stations had FZRA at the same time. Whatever, let's try
-%%%%%%%%%%%%%it:
-numclusters = 6;
-[IDX_stations centroids_stations] = kmeans(event_stationcounts', numclusters);
-clusterpct = event_stationcounts';
+% %%%%%%%%%%%%%OR we can do it with a time bias where we let time be included
+% %%%%%%%%%%%%%as a factor in the clustering. So not only will the stations
+% %%%%%%%%%%%%%be clustered by the percentage of participation overall in
+% %%%%%%%%%%%%%the three storm types, but they'll be selected to be near
+% %%%%%%%%%%%%%stations that they experienced each storm with. Wait, this is
+% %%%%%%%%%%%%%a whole different way to classify them. It's just based off of
+% %%%%%%%%%%%%%which stations had FZRA at the same time. Whatever, let's try
+% %%%%%%%%%%%%%it:
+% numclusters = 6;
+% [IDX_stations centroids_stations] = kmeans(event_stationcounts', numclusters);
+% clusterpct = event_stationcounts';
 
-figure(49)
-silhouette(event_stationcounts',IDX_stations)
+% figure(49)
+% silhouette(event_stationcounts',IDX_stations)
 
 %eva = evalclusters(event_stationcounts,'kmeans','CalinskiHarabasz','KList',[1:6])
 
@@ -671,22 +686,52 @@ silhouette(clusterpct,IDX_stations)
 % colorz(6,:) = [255,127,80]/255;
 
 %Plot the points in 3d so we can see if the clusters make sense:
+load colorz
 figure(23)
 for k = 1:numclusters + 1  %plus one for our additional NYC Category
-    colorz(k,:) = rand(1,3); %Use the loaded colors if you've loaded results
+    %colorz(k,:) = rand(1,3); %Use the loaded colors if you've loaded results
     %plot3(clusterpct(IDX_stations==k,1),clusterpct(IDX_stations==k,2),clusterpct(IDX_stations==k,3),'o','color',colorz(k,:),'LineStyle','none','LineWidth',3)
     %plot(clusterpct(IDX_stations==k,3),clusterpct(IDX_stations==k,1),'o','color',colorz(k,:),'LineStyle','none','LineWidth',3)
-    plot3(clusterpct(IDX_stations==k,1),clusterpct(IDX_stations==k,2),clusterpct(IDX_stations==k,3),'o','color',colorz(k,:),'LineStyle','none','LineWidth',3)
+    subplot(1,3,1)
+    plot(clusterpct(IDX_stations==k,1),clusterpct(IDX_stations==k,3),'o','color',colorz(k,:),'LineStyle','none','LineWidth',3)
     hold on
+    xlabel('1')
+    ylabel('3')
+%     xlabel('Arctic High & Cold Air Damming')
+%     ylabel('Cyclone/Anticyclone')
+%     zlabel('Occluded Front & Cold Air Trapping')
+    xlim([0 90])
+    %axis vis3d
+    grid on
+    
+    subplot(1,3,2)
+    plot(clusterpct(IDX_stations==k,2),clusterpct(IDX_stations==k,1),'o','color',colorz(k,:),'LineStyle','none','LineWidth',3)
+    hold on
+    xlabel('2')
+    ylabel('1')
+%     xlabel('Arctic High & Cold Air Damming')
+%     ylabel('Cyclone/Anticyclone')
+%     zlabel('Occluded Front & Cold Air Trapping')
+    xlim([0 90])
+    grid on
+    
+    subplot(1,3,3)
+    plot(clusterpct(IDX_stations==k,3),clusterpct(IDX_stations==k,2),'o','color',colorz(k,:),'LineStyle','none','LineWidth',3)
+    hold on
+    xlabel('3')
+    ylabel('2')
+%     xlabel('Arctic High & Cold Air Damming')
+%     ylabel('Cyclone/Anticyclone')
+%     zlabel('Occluded Front & Cold Air Trapping')
+    xlim([0 90])
+    grid on
+    
+    
 end
-xlabel('Arctic High & Cold Air Damming')
-ylabel('Cyclone/Anticyclone')
-zlabel('Occluded Front & Cold Air Trapping')
-axis vis3d
-%view(-90,270)
-grid on
 
 %plot the stations by their cluster identities:
+lat_lim = [37.5 50]; %deg N
+lon_lim = [-95 -71]; %deg W
 figure(2)
 worldmap(lat_lim,lon_lim) %plots empty axes
 %title('Regional Classification from Synoptic Clustering');
