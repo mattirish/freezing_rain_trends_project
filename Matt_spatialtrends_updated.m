@@ -9,6 +9,9 @@ load a_all.mat %contains a, the batch summary data for all 98 stations
 %load b_fixedcoords.mat %contains b, the full dataset of FZRA events for each station.
 load b.mat %contains b, the full dataset of FZRA events for each station. *fixed b file. coords are fixed too. can prob delete b_fixedcoords
 
+load yearly_trends.mat %contains trends calculated in R using modified Mann-Kendall test
+
+
 %load numobsperyear.mat %contains number of observations per year at each station for each region
 
 %Concatenate all the stations from each region to create... A MEGAMATRIX:
@@ -50,18 +53,22 @@ load b.mat %contains b, the full dataset of FZRA events for each station. *fixed
 
 %% Initial mapping and wind map
 %Specify a map area of interest (the bounds of our map):
-lat_lim = [38 50]; %deg N
-lon_lim = [-96 -72]; %deg W
+lat_lim = [37.9 50]; %deg N
+lon_lim = [-97 -72]; %deg W
 
-%Import the shapefile:
+%Import the shapefiles:
 states = shaperead('usastatehi','UseGeoCoords',true);
 provinces = shaperead('shapefiles/province','UseGeoCoords',true);
 mexstates = shaperead('shapefiles/mexstates','UseGeoCoords',true);
+lakes = shaperead('shapefiles/ne_10m_lakes_north_america','UseGeoCoords',true);
+greatlakes = shaperead('shapefiles/Great_Lakes','UseGeoCoords',true);
+[Z_elev, refvec_elev] = etopo(1, lat_lim, lon_lim);
+
 
 %Let's plot this along with the stations to make sure we've got the coastline situated correctly.
 figure(1)
 ax = worldmap(lat_lim,lon_lim) %plots empty axes
-title('Wind During FZRN Events in the Great Lakes');
+title('Wind During FZRA Events in the Great Lakes');
 geoshow(states,'FaceColor',[.5 1 .5])
 geoshow(provinces,'FaceColor',[.5 1 .5])
 framem('ffacecolor',[.5 .7 .9]); %shows water as blue
@@ -124,7 +131,7 @@ y = (lat_lim(1):resolution:lat_lim(2));
 %                     a_pa.MonthFreq;
 %                     a_wi.MonthFreq];
               
-%Find relative frequencies by dividing num FZRN hours recorded each year per station by number of hours recorded                
+%Find relative frequencies by dividing num FZRA hours recorded each year per station by number of hours recorded                
 %YearFreqrel = YearFreq./numobservations;
 %YearFreqrel = YearFreqrel*100*100; %scale by 100, then make percent
 YearFreqrel = a.YearFreq_rel; %in total hours of FZRA per year, normalized for num. observations.
@@ -170,6 +177,8 @@ fzramap = griddata(stationlocations_wboundpts(:,1),stationlocations_wboundpts(:,
 %% DIFFMAP:
 yearstoplot1 = 1976:1995;
 yearstoplot2 = 1996:2014;
+yearstoplot1 = 2005:2009;
+yearstoplot2 = 2009:2014;
 fzravals_wboundpts1 = mean(YearFreqrel_wboundpts(:,yearstoplot1 - 1975),2);
 fzravals_wboundpts2 = mean(YearFreqrel_wboundpts(:,yearstoplot2 - 1975),2);
 fzramap1 = griddata(stationlocations_wboundpts(:,1),stationlocations_wboundpts(:,2), ...
@@ -254,6 +263,11 @@ hold on
 geoshow(provinces,'FaceColor',[1 1 1])
 framem('ffacecolor',[.5 .7 .9]); %shows water as blue
 %geoshow(fzrnmap,fzrn_ref,'DisplayType','texturemap','FaceAlpha',0.8)
+
+%Plot an elevation basemap for reference:
+[C h] = contourm(fzrnmap,fzrn_ref,'LevelStep',5,'LineWidth',1,'LineColor','k');
+
+
 plotm(a.StationLocations(:,1),a.StationLocations(:,2),'ko') %plots measurement stations
 sizecoeff = 7;
 freqs1 = mean(YearFreqrel(:,yearstoplot1 - 1975),2,'omitnan');
@@ -302,38 +316,79 @@ end
 %     pvals(m) = pval(1,2);
 % end
 
-figure(4)
-worldmap(lat_lim,lon_lim)
-%colormap(parula)
-%caxis([-1, 1])
-%caxis([-75,100])
-
-cptcmap('SVS_tempanomaly', 'mapping', 'scaled');
-c = colorbar; 
-
-geoshow(states,'FaceColor',[1 1 1])
+%Ultimate freezing rain map:
+figure(7)
+ax1 = worldmap(lat_lim,lon_lim)
+colormap(ax1, flipud(gray(256)))
+caxis([-20 1400])
+%Plot DEM:
+elev_ax = geoshow(ax1,Z_elev, refvec_elev, 'DisplayType', 'texturemap');
+geoshow(lakes,'FaceColor',[1 1 1])
+geoshow(greatlakes,'FaceColor',[1 1 1])
+ax2 = axes;
+axis(ax2,'off')
+axes(ax2)
+bubb_ax = worldmap(lat_lim,lon_lim)
+cb_bubb = colorbar(bubb_ax,'Location','east')
+cb_elev = colorbar(ax1,'Location','west')
+cb_bubb.FontSize = 12
+cb_elev.FontSize = 12
+xlabel(cb_elev,'Elevation (m)')
+xlabel(cb_bubb,'Decadal Linear Trend (hours year^{-1} decade^{-1})')
 hold on
-geoshow(provinces,'FaceColor',[1 1 1])
-framem('ffacecolor',[0.95 0.95 0.95]); %shows water as blue
 %geoshow(fzramap,fzra_ref,'DisplayType','texturemap','FaceAlpha',0.8)
-plotm(a.StationLocations(:,1),a.StationLocations(:,2),'r+') %plots measurement stations
+%c_bubbs = scatterm(a.StationLocations(:,1),a.StationLocations(:,2),500*(1-pvals),hoursperyear,'filled')
 
-sizecoeff = 700;
-scatterm(a.StationLocations(:,1),a.StationLocations(:,2),500*(1-pvals),hoursperyear,'filled')
+
+pvals_mmkh = yearly_trends_data(2,:);
+pvals_mmkh(pvals_mmkh == 1 | isnan(pvals_mmkh)) = 0.99;
+%c_bubbs = scatterm(a.StationLocations(:,1),a.StationLocations(:,2),500*(1-pvals_mmkh),yearly_trends_data(7,:)'*39./(median(YearFreqrel,2,'omitnan') - yearly_trends_data(7,:)'*19)*100,'filled') % percent change '76 to '14
+
+c_bubbs = scatterm(a.StationLocations(:,1),a.StationLocations(:,2),500*(1-pvals_mmkh),yearly_trends_data(7,:)*10,'filled') %1lag hamed
+
+%c_bubbs = scatterm(a.StationLocations(:,1),a.StationLocations(:,2),300,yearly_trends_3lag_data(7,:),'filled') %3lag hamed
+%c_bubbs = scatterm(a.StationLocations(:,1),a.StationLocations(:,2),300,median(YearFreqrel(:,(1976:1985) - 1975),2,'omitnan'),'filled') %1975-1986 average
+
+% % Map the 1976 and 2014 "representative" years:
+% % 1976 (median at 1995 minus (19 years * slope):
+% c_bubbs = scatterm(a.StationLocations(:,1),a.StationLocations(:,2),300,median(YearFreqrel,2,'omitnan') - yearly_trends_data(7,:)'*19,'filled')
+% % 2014 (median at 1995 plus (19 years * slope):
+% %c_bubbs = scatterm(a.StationLocations(:,1),a.StationLocations(:,2),300,median(YearFreqrel,2,'omitnan') + yearly_trends_data(7,:)'*19,'filled')
+% caxis(ax2,[0 40])
+% xlabel(cb_bubb,'Hours of Freezing Rain Per Year)')
+
+%c_bubbs = scatterm(a.StationLocations(:,1),a.StationLocations(:,2),100,pvals,'filled')
 %scatterm(a.StationLocations(:,1),a.StationLocations(:,2),500*(1-sig),sen_percent,'filled')
-c = colorbar
-c.FontSize = 22
-%c.FontName = 'Gill Sans MT'
-ypercentages = get(c,'YTickLabel');
+cptcmap('SVS_tempanomaly', bubb_ax, 'mapping', 'scaled');
+caxis(ax2,[-max(abs(yearly_trends_data(7,:)))*10 max(abs(yearly_trends_data(7,:)))*10])
+%caxis(ax2,[-max(abs(yearly_trends_3lag_data(7,:))) max(abs(yearly_trends_3lag_data(7,:)))])
+caxis(ax2,[0 max(abs(median(YearFreqrel(:,(1976:1985) - 1975),2,'omitnan')))])
+
+% For percentage change plot:
+cptcmap('SVS_tempanomaly', bubb_ax, 'mapping', 'scaled');
+caxis(ax2,[-200 200])
+ypercentages = get(cb_bubb,'YTickLabel');
 perc = repmat('%',size(ypercentages,1),1);
 ypercentages = strcat(ypercentages, perc);
-set(c,'YTickLabel',ypercentages);
-xlabel(c,'Change from Baseline')
+set(cb_bubb,'YTickLabel',ypercentages);
+xlabel(cb_bubb,'Change 1976?2014')
+
+
 hold on
-title('Linear Trend in Freezing Rain (2000-2014)')
+transparentshapes = makesymbolspec('Polygon',{'Default','FaceAlpha',0});
+%Plot state and province outlines:
+geoshow(states,'SymbolSpec',transparentshapes)
+geoshow(provinces,'SymbolSpec',transparentshapes)
+
+plotm(a.StationLocations(:,1),a.StationLocations(:,2),'k.','MarkerSize',22)
+%Add a small X to locations where p<0.05:
+plotm(a.StationLocations(yearly_trends_data(2,:)<0.05,1),a.StationLocations(yearly_trends_data(2,:)<0.05,2),'kx','MarkerSize',20)
+
+
+
 
 figure(1000)
-plot(pvals)
+plot(yearly_trends_data(2,:))
 
 
 
