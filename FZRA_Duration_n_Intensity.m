@@ -44,7 +44,7 @@ for w = 1:6 %there are five clusters
     
 end
 
-%OMG the time hath come! Plot 'em and hope for the best!
+%The time hath come! Plot 'em and hope for the best!
 figure(41)
 for w = 1:6
     plot(1979:2014,1-pct_light_time_series_regional_avg(w,:),'color',colorz(w,:),'LineWidth',2)
