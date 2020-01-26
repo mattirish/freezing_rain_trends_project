@@ -5,6 +5,7 @@
 library(modifiedmk)
 library(R.matlab)
 library(ggplot2)
+library(ggridges)
 
 # Redefine mmkh with an output of confidence interval:
 mmkh_ci = function (x, ci = 0.95) 
@@ -117,11 +118,17 @@ MonthFreq_yearly_rel_series_domain_sum <- apply(MonthFreq_yearly_rel_series,2, s
 
 # Estimate the annual trend for each station:
 yearly_trends <-apply(YearFreq_rel, 1, function(x) mmkh_ci(x,c=0.95))
-yearly_trends_3lag <-apply(YearFreq_rel, 1, function(x) mmkh3lag(x,c=0.95))
+yearly_trends_9614 <-apply(YearFreq_rel[,21:39], 1, function(x) mmkh_ci(x,c=0.95))
 # Estimate the annual trend for the entire region:
-yearly_trends_domain_avg <- mmkh(YearFreq_rel_domain_avg,c=0.95)
+yearly_trends_domain_avg <- mmkh_ci(YearFreq_rel_domain_avg,c=0.95)
+yearly_trends_domain_avg_9614 <- mmkh_ci(YearFreq_rel_domain_avg[21:39],c=0.95)
 
-writeMat("yearly_trends.mat",yearly_trends_data=yearly_trends, yearly_trends_3lag_data=yearly_trends_3lag,fixNames=T)
+writeMat("yearly_trends.mat",
+         yearly_trends_data=yearly_trends, 
+         yearly_trends_9614_data=yearly_trends_9614, 
+         yearly_trends_domain_avg=yearly_trends_domain_avg, 
+         yearly_trends_domain_avg_9614=yearly_trends_domain_avg_9614,
+         fixNames=T)
 
 
 # Estimate the monthly trend for each station:
@@ -143,26 +150,37 @@ fzra_durations <- readMat("FZRA_durations.mat")
 meandurations <- fzra_durations[["meandurations"]]
 mediandurations <- fzra_durations[["mediandurations"]]
 # Estimate the annual DURATION trend for each station:
-yearly_trends_duration <-apply(meandurations[,21:39], 1, function(x) mmkh_ci(x,c=0.95))
-yearly_trends_3lag_duration <-apply(meandurations[,21:39], 1, function(x) mmkh3lag(x,c=0.95))
+yearly_trends_duration <-apply(meandurations, 1, function(x) mmkh_ci(x,c=0.95))
+yearly_trends_duration_9614 <-apply(meandurations[,21:39], 1, function(x) mmkh_ci(x,c=0.95))
 # # Estimate the annual trend for the entire region:
 # yearly_trends_domain_avg <- mmkh(YearFreq_rel_domain_avg,c=0.95)
 
-writeMat("yearly_trends_duration.mat",yearly_trends_duration_data=yearly_trends_duration, yearly_trends_3lag_duration_data=yearly_trends_3lag_duration,fixNames=T)
+writeMat("yearly_trends_duration.mat",
+         yearly_trends_duration_data=yearly_trends_duration,
+         yearly_trends_duration_9614_data=yearly_trends_duration_9614,
+         fixNames=T)
+
+writeMat("yearly_trends.mat",
+         yearly_trends_data=yearly_trends, 
+         yearly_trends_9614_data=yearly_trends_9614, 
+         yearly_trends_data=yearly_trends, 
+         yearly_trends_domain_avg=yearly_trends_domain_avg, 
+         yearly_trends_domain_avg_9614=yearly_trends_domain_avg_9614,
+         fixNames=T)
 
 # INTENSITY ############################################################################
 fzra_intensities <- readMat("FZRA_intensities.mat")
 pct_islightFZRA <- fzra_intensities[["pct.islightFZRA"]]
 
 # Estimate the annual trend for each station:
-#yearly_trends_intensity <- apply(pct_islightFZRA[,21:39], 1, function(x) mmkh_ci(x,c=0.95))
-yearly_trends_intensity <- apply(pct_islightFZRA[,21:39], 1, function(x) mmkh(x))
+yearly_trends_intensity <- apply(pct_islightFZRA[,21:39], 1, function(x) mmkh_ci(x,c=0.95)) #[,21:39]
+#yearly_trends_intensity <- apply(pct_islightFZRA[,21:39], 1, function(x) mmkh(x))
 
-yearly_trends_3lag_intensity <- apply(pct_islightFZRA[,21:39], 1, function(x) mmkh3lag(x,c=0.95))
+#yearly_trends_3lag_intensity <- apply(pct_islightFZRA[,21:39], 1, function(x) mmkh3lag(x,c=0.95))
 # # Estimate the annual trend for the entire region:
 # yearly_trends_domain_avg <- mmkh(YearFreq_rel_domain_avg,c=0.95)
 
-writeMat("yearly_trends_duration.mat",yearly_trends_intensity_data=yearly_trends_intensity, yearly_trends_3lag_intensity_data=yearly_trends_3lag_intensity,fixNames=T)
+writeMat("yearly_trends_intensity.mat",yearly_trends_intensity_data=yearly_trends_intensity,fixNames=T)
 
 
 
