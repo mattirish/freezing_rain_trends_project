@@ -12,8 +12,8 @@ stationnames = fieldnames(b);
 %this!
 
 %Get rid of first 1976-1978 records:
-event_pct_lightFZRA(1:length(event_pct_lightFZRA)-length(dates)) = [];
-event_stationcounts(1:length(event_stationcounts)-length(dates),:) = [];
+%event_pct_lightFZRA(1:length(event_pct_lightFZRA)-length(dates)) = [];
+%event_stationcounts(1:length(event_stationcounts)-length(dates),:) = [];
 
 %% Do this thing
 figure(101)
@@ -107,7 +107,7 @@ rsquared_non = corrc_non(1,2).^2;
 stats_non = fitlm(1976:2014,nonevents_yearly,'linear');
 pvals_non = table2array(stats_non.Coefficients(1,4))
    
-    
+
 figure(10)
 plot(1976:2014,nonevents_yearly)
 hold on

@@ -2,8 +2,8 @@
 %Keep the system from sleeping while this runs:
 system('caffeinate -dims &');
 
-for min_reports_per_event = 4:-1:2
-    for max_nonevent_hrs = 3:-1:1
+for min_reports_per_event = 1 %4:-1:2
+    for max_nonevent_hrs = 6 %3:-1:1
         
         timestep = 3;               %rounds to every three hours
         %Load historical freezing rain reports

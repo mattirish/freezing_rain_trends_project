@@ -1,6 +1,6 @@
 %% FZRADurationAnalysis.m
 % Analyzes spatial and temporal trends in the duration of FZRA events
-% throughout the Greate Lakes
+% throughout the Great Lakes
 % Matt Irish
 % March 2017
 
@@ -17,6 +17,7 @@ stationnames = fieldnames(b);
 % Initialize EZ access 97*39 mean and median event duration matrices:
 meandurations = zeros(97,39);
 mediandurations = meandurations;
+pct_islightFZRA = meandurations;
 
 %Outer loop: loop through stations.
 for m = 1:length(stationnames)
@@ -56,6 +57,31 @@ for m = 1:length(stationnames)
         
         %Make each year's distribution into a percent of total records for that year:
         b.(stationnames{m}).durationdistrib(yr-1975,:) = b.(stationnames{m}).durationdistrib(yr-1975,:)./sum(durationyr == yr)*100; 
+    
+            
+        % Record the fraction of reports that are of light intensity for this
+        % station by year:
+         %For all reports that are deemed light FZRA, give them a value of 1.
+        %Otherwise, zero.
+        is_yr = b.(stationnames{m}).YR == yr;
+        islightFZRA_stn = -999*ones(length(b.(stationnames{m}).MW1(is_yr)),1); %initialize records to "other intensity category" = -999. Hopefully there won't be any of these.
+        islightFZRA_stn(b.(stationnames{m}).MW1(is_yr) == 66 | b.(stationnames{m}).MW2(is_yr) == 66 |  ...  %check if any of them are 66, meaning "Rain, freezing, slight" as opposed to 67, "Rain, freezing, moderate or heavy"
+            b.(stationnames{m}).MW3(is_yr) == 66 | b.(stationnames{m}).MW4(is_yr) == 66 |  ...
+            b.(stationnames{m}).AW1(is_yr) == 64 | b.(stationnames{m}).AW2(is_yr) == 64 |  ...  %same as before but light is 64 for automated obs.
+            b.(stationnames{m}).AW3(is_yr) == 64 | b.(stationnames{m}).AW4(is_yr) == 64) = 1;
+        %Set everything that's moderate or heavy to zero:
+        islightFZRA_stn(b.(stationnames{m}).MW1(is_yr) == 67 | b.(stationnames{m}).MW2(is_yr) == 67 |  ...  %67, "Rain, freezing, moderate or heavy"
+            b.(stationnames{m}).MW3(is_yr) == 67 | b.(stationnames{m}).MW4(is_yr) == 67 |  ...
+            b.(stationnames{m}).AW1(is_yr) == 65 | b.(stationnames{m}).AW2(is_yr) == 65 |  ...  %65, "Rain, freezing, moderate"
+            b.(stationnames{m}).AW3(is_yr) == 65 | b.(stationnames{m}).AW4(is_yr) == 65 |  ...
+            b.(stationnames{m}).AW1(is_yr) == 66 | b.(stationnames{m}).AW2(is_yr) == 66 |  ...  %66, "Rain, freezing, heavy"
+            b.(stationnames{m}).AW3(is_yr) == 66 | b.(stationnames{m}).AW4(is_yr) == 66) = 0;
+        
+        pct_islightFZRA_stn = sum(islightFZRA_stn)/length(islightFZRA_stn);
+        %Record the fraction for this station:
+        b.(stationnames{m}).pct_islightFZRA(yr-1975) = pct_islightFZRA_stn; 
+        pct_islightFZRA(m,yr-1975) = pct_islightFZRA_stn;
+
     end
     
     %Replicate the Cortinas 2000 bar plot and then do an updated one.

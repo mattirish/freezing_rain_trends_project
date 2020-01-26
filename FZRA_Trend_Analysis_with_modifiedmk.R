@@ -47,9 +47,12 @@ mmkh_ci = function (x, ci = 0.95)
       S = S + sign(x[j] - x[i])
     }
   }
+  if(all(xn == 1)) xn[1] = 1.001
   ro <- acf(rank(xn), lag.max = (n - 1), plot = FALSE)$acf[-1]
   sig <- qnorm((1 + ci)/2)/sqrt(n)
   rof <- rep(NA, length(ro))
+  #warning(print(xn))
+  #warning(sprintf("ro is \n %s \n and sig is \n %s \n", ro, sig))
   for (i in 1:(length(ro))) {
     if (ro[i] > sig || ro[i] < -sig) {
       rof[i] <- ro[i]
@@ -102,6 +105,8 @@ mmkh_ci = function (x, ci = 0.95)
 ########################################################################################
 
 setwd('/Users/mattirish/Documents/MATLAB/freezing_rain_trends_project')
+
+# FREQUENCY ############################################################################
 a_all <- readMat("a_all.mat")
 YearFreq_rel <- a_all[["a"]][[11]]
 YearFreq_rel_domain_avg <- apply(YearFreq_rel,2, median, na.rm = T)
@@ -129,9 +134,37 @@ for (month in 1:5){
   sen_monthly_domain_avg[month] <- monthly_trends_domain_sum[7]
 }
 
-
 ggplot(yearly_trends[2,], aes(1:length(yearly_trends[2,]), yearly_trends[2,] )) +
   ggline()
+
+
+# DURATION ############################################################################
+fzra_durations <- readMat("FZRA_durations.mat")
+meandurations <- fzra_durations[["meandurations"]]
+mediandurations <- fzra_durations[["mediandurations"]]
+# Estimate the annual DURATION trend for each station:
+yearly_trends_duration <-apply(meandurations[,21:39], 1, function(x) mmkh_ci(x,c=0.95))
+yearly_trends_3lag_duration <-apply(meandurations[,21:39], 1, function(x) mmkh3lag(x,c=0.95))
+# # Estimate the annual trend for the entire region:
+# yearly_trends_domain_avg <- mmkh(YearFreq_rel_domain_avg,c=0.95)
+
+writeMat("yearly_trends_duration.mat",yearly_trends_duration_data=yearly_trends_duration, yearly_trends_3lag_duration_data=yearly_trends_3lag_duration,fixNames=T)
+
+# INTENSITY ############################################################################
+fzra_intensities <- readMat("FZRA_intensities.mat")
+pct_islightFZRA <- fzra_intensities[["pct.islightFZRA"]]
+
+# Estimate the annual trend for each station:
+#yearly_trends_intensity <- apply(pct_islightFZRA[,21:39], 1, function(x) mmkh_ci(x,c=0.95))
+yearly_trends_intensity <- apply(pct_islightFZRA[,21:39], 1, function(x) mmkh(x))
+
+yearly_trends_3lag_intensity <- apply(pct_islightFZRA[,21:39], 1, function(x) mmkh3lag(x,c=0.95))
+# # Estimate the annual trend for the entire region:
+# yearly_trends_domain_avg <- mmkh(YearFreq_rel_domain_avg,c=0.95)
+
+writeMat("yearly_trends_duration.mat",yearly_trends_intensity_data=yearly_trends_intensity, yearly_trends_3lag_intensity_data=yearly_trends_3lag_intensity,fixNames=T)
+
+
 
 
 ## DIY-MODIFIED SEASONAL (HAMED et. al):

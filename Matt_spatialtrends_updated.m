@@ -9,44 +9,11 @@ load a_all.mat %contains a, the batch summary data for all 98 stations
 %load b_fixedcoords.mat %contains b, the full dataset of FZRA events for each station.
 load b.mat %contains b, the full dataset of FZRA events for each station. *fixed b file. coords are fixed too. can prob delete b_fixedcoords
 
-load yearly_trends.mat %contains trends calculated in R using modified Mann-Kendall test
+load yearly_trends.mat %contains frequency trends calculated in R using modified Mann-Kendall test
+load yearly_trends_duration.mat %contains duration trends calculated in R using modified Mann-Kendall test
 
 
 %load numobsperyear.mat %contains number of observations per year at each station for each region
-
-%Concatenate all the stations from each region to create... A MEGAMATRIX:
-% StationLocations = [a_ia.StationLocations;
-%                     a_il.StationLocations;
-%                     a_in.StationLocations;
-%                     a_mi.StationLocations;
-%                     a_mn.StationLocations;
-%                     a_ny.StationLocations;
-%                     a_oh.StationLocations;
-%                     a_onqb.StationLocations;
-%                     a_pa.StationLocations;
-%                     a_wi.StationLocations];
-% 
-% WindSpeed = [a_ia.WindSpeed ...
-%                     a_il.WindSpeed ...
-%                     a_in.WindSpeed ...
-%                     a_mi.WindSpeed ...
-%                     a_mn.WindSpeed ...
-%                     a_ny.WindSpeed ...
-%                     a_oh.WindSpeed ...
-%                     a_onqb.WindSpeed ...
-%                     a_pa.WindSpeed ...
-%                     a_wi.WindSpeed];
-% 
-% WindDir = [a_ia.WindDir ...
-%                     a_il.WindDir ...
-%                     a_in.WindDir ...
-%                     a_mi.WindDir ...
-%                     a_mn.WindDir ...
-%                     a_ny.WindDir ...
-%                     a_oh.WindDir ...
-%                     a_onqb.WindDir ...
-%                     a_pa.WindDir ...
-%                     a_wi.WindDir];
 
 %cell2mat(struct2cell(structfun (@(x) x.coords, b, 'UniformOutput', false)))
 
@@ -317,7 +284,7 @@ end
 % end
 
 %Ultimate freezing rain map:
-figure(7)
+figure(8)
 ax1 = worldmap(lat_lim,lon_lim)
 colormap(ax1, flipud(gray(256)))
 caxis([-20 1400])
@@ -339,40 +306,71 @@ hold on
 %geoshow(fzramap,fzra_ref,'DisplayType','texturemap','FaceAlpha',0.8)
 %c_bubbs = scatterm(a.StationLocations(:,1),a.StationLocations(:,2),500*(1-pvals),hoursperyear,'filled')
 
-
+% Plot frequency trends data:
 pvals_mmkh = yearly_trends_data(2,:);
 pvals_mmkh(pvals_mmkh == 1 | isnan(pvals_mmkh)) = 0.99;
+c_bubbs = scatterm(a.StationLocations(:,1),a.StationLocations(:,2),750*(1-pvals_mmkh),yearly_trends_data(7,:)*10,'filled') %1lag hamed
+cptcmap('SVS_tempanomaly', bubb_ax, 'mapping', 'scaled');
+caxis(ax2,[-max(abs(yearly_trends_data(7,:)))*10 max(abs(yearly_trends_data(7,:)))*10])
+
+% Or plot duration trends data:
+pvals_mmkh = yearly_trends_duration_data(2,:);
+pvals_mmkh(pvals_mmkh == 1 | isnan(pvals_mmkh)) = 0.99;
+c_bubbs = scatterm(a.StationLocations(:,1),a.StationLocations(:,2),750*(1-pvals_mmkh),yearly_trends_duration_data(7,:)*10,'filled') %1lag hamed
+cptcmap('SVS_tempanomaly', bubb_ax, 'mapping', 'scaled');
+caxis(ax2,[-max(abs(yearly_trends_duration_data(7,:)))*10 max(abs(yearly_trends_duration_data(7,:)))*10])
+
+t_9614 = 1996:2014;
+% Or plot intensity trends data:
+for m = 1:97
+    [taub(m) tau(m) h(m) sig(m) Z(m) S(m) sigma(m) sen(m) n senplot cilower(m) ciupper(m)] = ktaub([t_9614;pct_islightFZRA(m,t_9614-1975)]',0.05,1);
+end
+
+
+[taub(m) tau(m) h(m) sig(m) Z(m) S(m) sigma(m) sen(m) n senplot cilower(m) ciupper(m)] = ktaub([t_9614;pct_islightFZRA(m,t_9614-1975)]',0.05,1);
+
+
+pvals_mmkh = sig;
+pvals_mmkh(pvals_mmkh == 1 | isnan(pvals_mmkh)) = 0.99;
+c_bubbs = scatterm(a.StationLocations(:,1),a.StationLocations(:,2),750*(1-pvals_mmkh),sen*10,'filled') %1lag hamed
+cptcmap('SVS_tempanomaly', bubb_ax, 'mapping', 'scaled');
+caxis(ax2,[-max(abs(sen))*10 max(abs(sen))*10])
+
+pvals_mmkh = yearly_trends_intensity_data(2,:);
+pvals_mmkh(pvals_mmkh == 1 | isnan(pvals_mmkh)) = 0.99;
+c_bubbs = scatterm(a.StationLocations(:,1),a.StationLocations(:,2),750*(1-pvals_mmkh),yearly_trends_intensity_data(7,:)*10,'filled') %1lag hamed
+cptcmap('SVS_tempanomaly', bubb_ax, 'mapping', 'scaled');
+caxis(ax2,[-max(abs(yearly_trends_intensity_data(7,:)))*10 max(abs(yearly_trends_intensity_data(7,:)))*10])
+
 %c_bubbs = scatterm(a.StationLocations(:,1),a.StationLocations(:,2),500*(1-pvals_mmkh),yearly_trends_data(7,:)'*39./(median(YearFreqrel,2,'omitnan') - yearly_trends_data(7,:)'*19)*100,'filled') % percent change '76 to '14
 
-c_bubbs = scatterm(a.StationLocations(:,1),a.StationLocations(:,2),500*(1-pvals_mmkh),yearly_trends_data(7,:)*10,'filled') %1lag hamed
 
 %c_bubbs = scatterm(a.StationLocations(:,1),a.StationLocations(:,2),300,yearly_trends_3lag_data(7,:),'filled') %3lag hamed
 %c_bubbs = scatterm(a.StationLocations(:,1),a.StationLocations(:,2),300,median(YearFreqrel(:,(1976:1985) - 1975),2,'omitnan'),'filled') %1975-1986 average
 
-% % Map the 1976 and 2014 "representative" years:
-% % 1976 (median at 1995 minus (19 years * slope):
-% c_bubbs = scatterm(a.StationLocations(:,1),a.StationLocations(:,2),300,median(YearFreqrel,2,'omitnan') - yearly_trends_data(7,:)'*19,'filled')
-% % 2014 (median at 1995 plus (19 years * slope):
-% %c_bubbs = scatterm(a.StationLocations(:,1),a.StationLocations(:,2),300,median(YearFreqrel,2,'omitnan') + yearly_trends_data(7,:)'*19,'filled')
-% caxis(ax2,[0 40])
-% xlabel(cb_bubb,'Hours of Freezing Rain Per Year)')
+% Map the 1976 and 2014 "representative" years:
+% 1976 (median at 1995 minus (19 years * slope):
+c_bubbs = scatterm(a.StationLocations(:,1),a.StationLocations(:,2),300,median(YearFreqrel,2,'omitnan') - yearly_trends_data(7,:)'*19,'filled')
+% 2014 (median at 1995 plus (19 years * slope):
+%c_bubbs = scatterm(a.StationLocations(:,1),a.StationLocations(:,2),300,median(YearFreqrel,2,'omitnan') + yearly_trends_data(7,:)'*19,'filled')
+caxis(ax2,[0 40])
+xlabel(cb_bubb,'Hours of Freezing Rain Per Year)')
 
 %c_bubbs = scatterm(a.StationLocations(:,1),a.StationLocations(:,2),100,pvals,'filled')
 %scatterm(a.StationLocations(:,1),a.StationLocations(:,2),500*(1-sig),sen_percent,'filled')
 cptcmap('SVS_tempanomaly', bubb_ax, 'mapping', 'scaled');
 caxis(ax2,[-max(abs(yearly_trends_data(7,:)))*10 max(abs(yearly_trends_data(7,:)))*10])
 %caxis(ax2,[-max(abs(yearly_trends_3lag_data(7,:))) max(abs(yearly_trends_3lag_data(7,:)))])
-caxis(ax2,[0 max(abs(median(YearFreqrel(:,(1976:1985) - 1975),2,'omitnan')))])
+%caxis(ax2,[0 max(abs(median(YearFreqrel(:,(1976:1985) - 1975),2,'omitnan')))])
 
-% For percentage change plot:
-cptcmap('SVS_tempanomaly', bubb_ax, 'mapping', 'scaled');
-caxis(ax2,[-200 200])
-ypercentages = get(cb_bubb,'YTickLabel');
-perc = repmat('%',size(ypercentages,1),1);
-ypercentages = strcat(ypercentages, perc);
-set(cb_bubb,'YTickLabel',ypercentages);
-xlabel(cb_bubb,'Change 1976?2014')
-
+% % For percentage change plot:
+% cptcmap('SVS_tempanomaly', bubb_ax, 'mapping', 'scaled');
+% caxis(ax2,[-200 200])
+% ypercentages = get(cb_bubb,'YTickLabel');
+% perc = repmat('%',size(ypercentages,1),1);
+% ypercentages = strcat(ypercentages, perc);
+% set(cb_bubb,'YTickLabel',ypercentages);
+% xlabel(cb_bubb,'Change 1976-2014')
 
 hold on
 transparentshapes = makesymbolspec('Polygon',{'Default','FaceAlpha',0});
@@ -383,8 +381,7 @@ geoshow(provinces,'SymbolSpec',transparentshapes)
 plotm(a.StationLocations(:,1),a.StationLocations(:,2),'k.','MarkerSize',22)
 %Add a small X to locations where p<0.05:
 plotm(a.StationLocations(yearly_trends_data(2,:)<0.05,1),a.StationLocations(yearly_trends_data(2,:)<0.05,2),'kx','MarkerSize',20)
-
-
+plotm(a.StationLocations(yearly_trends_data(2,:)<0.1 & yearly_trends_data(2,:)>0.05,1),a.StationLocations(yearly_trends_data(2,:)<0.1 & yearly_trends_data(2,:)>0.05,2),'k+','MarkerSize',10)
 
 
 figure(1000)
@@ -438,10 +435,7 @@ t = 1976:2014
 sigincreases = YearFreqrel([10 12 6 5],t-1975)
 sigincreases = mean(sigincreases)
 [taub tau h sig Z S sigma sen n senplot cilower ciupper] = ktaub([t;sigincreases]',0.05,1)
-%We get a p-value of 0.087 if we average the three stations. Mayb we should
-%fig out a way of doing this by weighting spatially so we could arrive at a
-%"hotspot" of statistical certainty between these three stations, for
-%example.
+
 
 hold on
 scatter(t,YearFreqrel(10,t-1975))
@@ -679,3 +673,20 @@ plotm(a.StationLocations(:,1),a.StationLocations(:,2),'r+') %plots measurement s
 
 hold on
 title('Linear Trend in Freezing Rain (2000-2014)')
+
+
+%% Line plot of intensity trends
+figure(24)
+plot(t,median(pct_islightFZRA(a.lat > 46,:),'omitnan'))
+hold on 
+plot(t,median(pct_islightFZRA(a.lat > 44 & a.lat <= 46,:),'omitnan'))
+plot(t,median(pct_islightFZRA(a.lat > 42 & a.lat <= 44,:),'omitnan'))
+plot(t,median(pct_islightFZRA(a.lat <= 42,:),'omitnan'))
+legend('46^{o}?50^{o}N','44^{o}?46^{o}N','42^{o}?44^{o}N','38^{o}?42^{o}N')
+
+figure(24)
+plot(t,median(pct_islightFZRA(a.lon < 80,:),'omitnan'))
+
+
+
+

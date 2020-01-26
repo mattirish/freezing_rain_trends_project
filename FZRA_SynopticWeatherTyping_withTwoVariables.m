@@ -41,7 +41,7 @@ load latslons_subregion_for_PCA
 
 %Call FZRA_EventTimes to give us a 3-hourly NARR-ready log of all events:
 timestep = 3;               %rounds to every three hours
-min_reports_per_event = 4;  %min no. reports that constitute an event. 4 is the saved files.
+min_reports_per_event = 1;  %min no. reports that constitute an event. 4 is the saved files.
 max_nonevent_hrs = 6;       %allow up to 4 hours between events
 
 %[event_times event_ids] = FZRA_EventTimes(timestep, min_reports_per_event, max_nonevent_hrs);
