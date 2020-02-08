@@ -494,7 +494,7 @@ ylabel('Total Yearly Hrs. of FZRA')
 %% Boxplot   
 %Years:
 % startyear = 1976;
-% endyear = 1996;
+% endyear = 1990;
 startyear = 2000;
 endyear = 2014;
 startyear = startyear - 1976;
@@ -518,17 +518,19 @@ for z = 1:97
 end
 
 
-figure(19)
+figure(25)
 %boxplot([MonthFreqrel(:,10:12)*100 MonthFreqrel(:,1:5)*100])
 
 %c = get(gca,'colororder') ; %save the color order for repetition of this plot
-set(gca,'ColorOrder',c)
-h = violinplot([MonthFreqrel(:,10:12)*100 MonthFreqrel(:,1:5)*100])
+%set(gca,'ColorOrder',c)
+%h = violinplot([MonthFreqrel(:,10:12)*100 MonthFreqrel(:,1:5)*100])
+boxplot([MonthFreqrel(:,10:12)*100 MonthFreqrel(:,1:5)*100], ...
+        'jitter',0.4)
 set(gca, 'XTick',1:8, 'XTickLabel',{'Oct' 'Nov' 'Dec' 'Jan' 'Feb' 'Mar' 'Apr' 'May'})
-ylabel('Relative Frequency (%)')
+ylabel('Relative Frequency (% of all hours in month)')
 grid on
 hold on
-line(1:8,median([MonthFreqrel(:,10:12)*100 MonthFreqrel(:,1:5)*100]))
+line(1:8,median([MonthFreqrel(:,10:12)*100 MonthFreqrel(:,1:5)*100]),'MarkerEdgeColor','k')
 set(gca,'FontSize',16)
 
 %Save for comp.

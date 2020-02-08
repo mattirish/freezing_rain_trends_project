@@ -16,7 +16,7 @@
 
 clear 
 
-load monthlies_correctedfordomainsize %archive of MSL maps for all 456 months and 12 averages, one for each month!
+%load monthlies_correctedfordomainsize %archive of MSL maps for all 456 months and 12 averages, one for each month!
 
 %Specify a map area of interest (the bounds of our map):
 lat_lim = [37.5 50]; %deg N
