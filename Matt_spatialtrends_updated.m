@@ -494,8 +494,8 @@ ylabel('Total Yearly Hrs. of FZRA')
 %% Boxplot   
 %Years:
 % startyear = 1976;
-% endyear = 1990;
-startyear = 2000;
+% endyear = 1995;
+startyear = 1996;
 endyear = 2014;
 startyear = startyear - 1976;
 endyear = endyear - 1976;
@@ -533,12 +533,23 @@ hold on
 line(1:8,median([MonthFreqrel(:,10:12)*100 MonthFreqrel(:,1:5)*100]),'MarkerEdgeColor','k')
 set(gca,'FontSize',16)
 
-%Save for comp.
-MonthFreqrel1 = MonthFreqrel;
+% %Save for comp.
+% MonthFreqrel1 = MonthFreqrel;
 
+% Use the Mann-Whitney U test to check for a directional change in the
+% median by month:
+% (increases (decreases are associated with a one-tailed test to the left (right))
+diff_freq = median(MonthFreqrel,1) - median(MonthFreqrel1,1)
+direction_of_change = cell(1,12);
+direction_of_change(diff_freq >= 0) = {'left'}; %summer months have zero FZRA--just use 'left'
+direction_of_change(diff_freq < 0) = {'right'};
 for month = 1:12
-    [p(month) h(month)] = ranksum(MonthFreqrel1(:,month), MonthFreqrel(:,month))
+    [p(month) h(month)] = ranksum(MonthFreqrel1(:,month), MonthFreqrel(:,month));
+    [p_directional(month) h_directional(month)] = ranksum(MonthFreqrel1(:,month), MonthFreqrel(:,month),'tail',direction_of_change(month));
 end
+
+% Convert change in frequency of reports to hours/month:
+diff_freq_hours = diff_freq.*24.*[31,28.25,31,30,31,30,31,31,30,31,30,31];
 
 %% Mann-Kendall Interpolation
 t = 1976:2014;
