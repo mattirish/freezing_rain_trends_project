@@ -115,6 +115,8 @@ YearFreq_rel_domain_avg <- apply(YearFreq_rel,2, median, na.rm = T)
 MonthFreq_yearly_rel_series <-  a_all[["a"]][[12]]
 MonthFreq_yearly_rel_series_domain_avg <- apply(MonthFreq_yearly_rel_series,2, median, na.rm = T) #Domain average freezing rain for every month in series
 MonthFreq_yearly_rel_series_domain_sum <- apply(MonthFreq_yearly_rel_series,2, sum, na.rm = T) #Domain average freezing rain for every month in series
+MonthFreq_yearly_rel_series_domain_75 <- apply(MonthFreq_yearly_rel_series,2, quantile, na.rm = T) #Domain average freezing rain for every month in series
+MonthFreq_yearly_rel_series_domain_75 <- MonthFreq_yearly_rel_series_domain_75[4,]
 
 # Estimate the annual trend for each station:
 yearly_trends <-apply(YearFreq_rel, 1, function(x) mmkh_ci(x,c=0.95))
@@ -145,13 +147,20 @@ writeMat("yearly_trends.mat",
 months <- c(11,12,1,2,3,4)
 pval_monthly_domain_avg <- vector("numeric", length(months))
 sen_monthly_domain_avg <- vector("numeric", length(months))
-monthly_trends <- data.table(month = months, sen = sen_monthly_domain_avg, p = pval_monthly_domain_avg)
-for (month in ){ #would include October and May but all medians are zero throughout the time series and this throws an error
-  monthly_trends_domain_sum <- mmkh(MonthFreq_yearly_rel_series_domain_avg[seq(month,ncol(MonthFreq_yearly_rel_series), by=12)][21:39], c=0.95)
-
-  monthly_trends[month == month, sen:=monthly_trends_domain_sum[7]]
-  monthly_trends[month == month, p:=monthly_trends_domain_sum[2]]
+monthly_trends <- data.table(month = months, 
+                             sen_median = sen_monthly_domain_avg, p_median = pval_monthly_domain_avg, 
+                             sen_quant = sen_monthly_domain_avg, p_quant = pval_monthly_domain_avg)
+for (thismonth in months){ #would include October and May but all medians are zero throughout the time series and this throws an error
+  monthly_trends_domain_median <- mmkh(MonthFreq_yearly_rel_series_domain_avg[seq(thismonth,ncol(MonthFreq_yearly_rel_series), by=12)], c=0.95)
+  monthly_trends_domain_75 <- mmkh(MonthFreq_yearly_rel_series_domain_75[seq(thismonth,ncol(MonthFreq_yearly_rel_series), by=12)], c=0.95)
+  
+  monthly_trends <- monthly_trends[month == thismonth, sen_median:=monthly_trends_domain_median[7]]
+  monthly_trends <- monthly_trends[month == thismonth, p_median:=monthly_trends_domain_median[2]]
+  monthly_trends <- monthly_trends[month == thismonth, sen_quant:=monthly_trends_domain_75[7]]
+  monthly_trends <- monthly_trends[month == thismonth, p_quant:=monthly_trends_domain_75[2]]
 }
+
+
 
 ggplot(yearly_trends[2,], aes(1:length(yearly_trends[2,]), yearly_trends[2,] )) +
   ggline()

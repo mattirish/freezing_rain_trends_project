@@ -22,13 +22,6 @@ clear
 lat_lim = [37.5 50]; %deg N
 lon_lim = [-95 -71]; %deg W
 
-%% Load the system boundaries.
-%Load the lat, lon, x, and y, (along with cfrzr, from 1979), the subregion
-%domain I chose. Routine is at the beginning of
-%FZRA_SynopticWeatherTyping.m.
-load latslons_subregion_for_PCA
-
-
 %% Reduce the domain of the monthlies down to our chosen region.
 %prmsl_monthly_avg = prmsl_monthly_avg(xindw+1:xindw+xinde,yinds+1:yinds+yindn,:);
 % %Rearrange so that it goes y,x,time:
@@ -41,8 +34,8 @@ load latslons_subregion_for_PCA
 
 %Call FZRA_EventTimes to give us a 3-hourly NARR-ready log of all events:
 timestep = 3;               %rounds to every three hours
-min_reports_per_event = 1;  %min no. reports that constitute an event. 4 is the saved files.
-max_nonevent_hrs = 6;       %allow up to 4 hours between events
+min_reports_per_event = 1;  %min no. reports that constitute an event.
+max_nonevent_hrs = 6;       %allow up to ? hours between events
 
 %[event_times event_ids] = FZRA_EventTimes(timestep, min_reports_per_event, max_nonevent_hrs);
 [event_times, event_ids, event_spd, event_spd_std, event_precip, event_precip_std, event_pct_lightFZRA, event_stationcounts, nonevent_times, nonevent_stations] = FZRA_EventTimes(timestep, min_reports_per_event, max_nonevent_hrs);
@@ -373,9 +366,8 @@ xlabel(c,'MSL Pressure Anomaly (mb)')
 
 
 
-
 %% GET THAT K-MEANS:
-current_event_def = '43';
+current_event_def = '16';
 
 load(strcat('maps_',current_event_def,'.mat'))
 
@@ -402,11 +394,11 @@ X = [Xprmsl;Xhgt850];
 % [IDX centroids] = kmeans(X',numclusters);
 % %%%%%End of that little bit. Proceed as you were:
 
-%Reshape the vectors into maps:
+%Reshape the vectors back into maps:
 for m = 1:numclusters
     clustermaps_prmsl(:,:,m) = reshape(centroids(m,1:10395),size(prmsl_anom_mb,1),size(prmsl_anom_mb,2));
-    %clustermaps_hgt(:,:,m) = reshape(centroids(m,10396:end),size(hgt850_anom,1),size(hgt850_anom,2));
-    clustermaps_hgt(:,:,m) = reshape(centroids(m,10396:end),size(hgt1000500_anom,1),size(hgt1000500_anom,2));
+    clustermaps_hgt(:,:,m) = reshape(centroids(m,10396:end),size(hgt850_anom,1),size(hgt850_anom,2));
+    %clustermaps_hgt(:,:,m) = reshape(centroids(m,10396:end),size(hgt1000500_anom,1),size(hgt1000500_anom,2));
     m
 end
 
