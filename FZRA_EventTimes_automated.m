@@ -2,8 +2,8 @@
 %Keep the system from sleeping while this runs:
 system('caffeinate -dims &');
 
-for min_reports_per_event = 1 %4:-1:2
-    for max_nonevent_hrs = 6 %3:-1:1
+for min_reports_per_event = 6:2:12 %4:-1:2
+    for max_nonevent_hrs = 12 %3:-1:1
         
         timestep = 3;               %rounds to every three hours
         %Load historical freezing rain reports
@@ -94,8 +94,8 @@ for min_reports_per_event = 1 %4:-1:2
         
         
         %--------------------------------------------------------------------------
-        %% Now apply the minimum simultaneous reports threshold to define the number
-        %of simultaneous reports needed to classify it as a FZRA "event" and then
+        %% Now apply the minimum total reports threshold to define the number
+        %of reports needed to classify it as a FZRA "event" and then
         %create a companion vector that classifies each event in increasing order.
         
         %Work through each event.
@@ -221,8 +221,18 @@ for min_reports_per_event = 1 %4:-1:2
         % Pull down the maps:
         load latslons_subregion_for_PCA
         load monthlies_correctedfordomainsize %archive of MSL maps for all 456 months and 12 averages, one for each month!
+        
+        clear prmsl_anom
+        clear airtemp
+        clear hgt850_anom
+        clear hgt1000_anom
+        clear hgt500_anom
+        clear prmsl_anom_mb
+        clear hgt1000500_anom
+                  
+        % For dynamics analysis with NARR, we only want events from 1979
+        % onward, so exclude the 1976-1978 events:
         event_times_case = event_times(event_times >= datetime(1979,1,1) & event_times < datetime(2015,1,1));
-        %FZRA_EventTimes:
         event_ids = event_ids(event_times >= datetime(1979,1,1) & event_times < datetime(2015,1,1));
         
         %Create a list of URLs for mean sea level pressure (Pa) and any other variables we'll include:
@@ -241,7 +251,7 @@ for min_reports_per_event = 1 %4:-1:2
         iter = 1;   %num. times through outer loop (index of current anomaly map)
         while(m < length(event_times_case))% should be length(event_ids)) for a full run
             tic
-            n = 1;  %counting vector for num. 3-hrly reports in each event.
+            n = 0;  %counting vector for num. 3-hrly reports in each event.
             
             %%%%%%%%%%%%%%%This was for if we want to make an "event average map" for each event. Bad idea, I think. Just take the map at the midtime of each event.
             %     prmsl_event = [];
@@ -270,7 +280,7 @@ for min_reports_per_event = 1 %4:-1:2
             
             %Now find the index in the prmsl files to download.
             %We'll use the map closest to the median of the event times.
-            dates(iter) = event_times_case(ceil(m-(n)/2)); %track times corresponding with maps. This is the median-time of the event.
+            dates(iter) = event_times_case(floor(m-(n)/2)); %track times corresponding with maps. This is the median-time of the event.
             
             %Download the times vector for the year in which the midpoint time is
             %and then match it to our timestamp for the index to plot.
@@ -312,6 +322,8 @@ for min_reports_per_event = 1 %4:-1:2
         hgt1000500_anom = hgt500_anom - hgt1000_anom;
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        display('printing maps. Value of first pixel on this iteration:')
+        prmsl_anom(1,1,1)
         % Save the maps:
         save(strcat('maps_',num2str(min_reports_per_event),num2str(max_nonevent_hrs)), ...
             'airtemp','dates','hgt1000500_anom','prmsl_anom_mb','hgt850_anom',...

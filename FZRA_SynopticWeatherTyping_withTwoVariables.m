@@ -22,6 +22,13 @@ clear
 lat_lim = [37.5 50]; %deg N
 lon_lim = [-95 -71]; %deg W
 
+%% Load the system boundaries.
+%Load the lat, lon, x, and y, (along with cfrzr, from 1979), the subregion
+%domain I chose. Routine is at the beginning of
+%FZRA_SynopticWeatherTyping.m.
+load latslons_subregion_for_PCA
+load a_all %for plotting station locations
+
 %% Reduce the domain of the monthlies down to our chosen region.
 %prmsl_monthly_avg = prmsl_monthly_avg(xindw+1:xindw+xinde,yinds+1:yinds+yindn,:);
 % %Rearrange so that it goes y,x,time:
@@ -34,8 +41,8 @@ lon_lim = [-95 -71]; %deg W
 
 %Call FZRA_EventTimes to give us a 3-hourly NARR-ready log of all events:
 timestep = 3;               %rounds to every three hours
-min_reports_per_event = 1;  %min no. reports that constitute an event.
-max_nonevent_hrs = 6;       %allow up to ? hours between events
+min_reports_per_event = 10;  %min no. reports that constitute an event.
+max_nonevent_hrs = 12;       %allow up to ? hours between events
 
 %[event_times event_ids] = FZRA_EventTimes(timestep, min_reports_per_event, max_nonevent_hrs);
 [event_times, event_ids, event_spd, event_spd_std, event_precip, event_precip_std, event_pct_lightFZRA, event_stationcounts, nonevent_times, nonevent_stations] = FZRA_EventTimes(timestep, min_reports_per_event, max_nonevent_hrs);
@@ -193,7 +200,7 @@ hgt1000500_anom = hgt500_anom - hgt1000_anom;
 % airtemp = cat(3, airtemp1, airtemp);
 % %Great! Now save them for later.
 
-load maps_prmsl_temp_hgt1000500_all
+%load maps_prmsl_temp_hgt1000500_all
 
 
 %Plot an example map, just to be sure we're cool.
@@ -367,19 +374,50 @@ xlabel(c,'MSL Pressure Anomaly (mb)')
 
 
 %% GET THAT K-MEANS:
-current_event_def = '16';
+%current_event_def = '1212';
 
-load(strcat('maps_',current_event_def,'.mat'))
+%load(strcat('maps_',current_event_def,'.mat'))
 
-
+% Shape surface level pressure anomalies, 850 mb heights, and station
+% counts for each event into a really long vector:
 numclusters = 3;
 Xprmsl = reshape(prmsl_anom_mb,size(prmsl_anom_mb,1)*size(prmsl_anom_mb,2),size(prmsl_anom_mb,3));
 
 Xhgt850 = reshape(hgt850_anom,size(hgt850_anom,1)*size(hgt850_anom,2),size(hgt850_anom,3));
-X = [Xprmsl;Xhgt850];
-% Xhgt1000500 = reshape(hgt1000500_anom,size(hgt1000500_anom,1)*size(hgt1000500_anom,2),size(hgt1000500_anom,3));
-% X = [Xprmsl;Xhgt1000500];
-[IDX centroids] = kmeans(X', numclusters,'Replicates',50);
+Xhgt = reshape(hgt1000500_anom,size(hgt1000500_anom,1)*size(hgt1000500_anom,2),size(hgt1000500_anom,3));
+
+event_ids_case = event_ids(event_times >= datetime(1979,1,1) & event_times < datetime(2015,1,1));
+event_stationcounts_case = event_stationcounts(event_ids_case(1):event_ids_case(end),:);
+event_stationcounts_case_rep = repmat(event_stationcounts_case,1,200);
+%X = [Xprmsl;Xhgt850;event_stationcounts_case'];
+X = [Xprmsl;Xhgt;event_stationcounts_case'];
+
+%Now rescale all the variables so the pressure anomalies don't outweigh the
+%freezing rain durations:
+scale_factors = max(X,[],2);
+% X_scaled = X*diag(scale_factors.^(-1));
+% X_scaled(isnan(X_scaled)) = 0;
+X_scaled = bsxfun(@rdivide, X, scale_factors);
+
+% Save this to send it to R for use in an entropy-weighted kmeans:
+save('X_for_kmeans_1000500','X','X_scaled');
+
+
+% Use parallel computing for many iterations to avoid high local minima in the k-means:
+% (Note: Parallel Computing Toolbox is necessary to run replicates in parallel)
+opts = statset('Display','final');
+stream = RandStream('mlfg6331_64');  % Random number stream
+options = statset('UseParallel',1,'UseSubstreams',1,...
+    'Streams',stream);
+tic; % Start stopwatch timer
+[IDX centroids] = kmeans(X_scaled',numclusters,'Options',options,'MaxIter',10000,...
+    'Display','final','Replicates',10);
+toc
+
+
+%Rescale the centroids:
+centroids = centroids .* repmat(scale_factors,1,numclusters)';
+
 %Try it with k-medoids! (Prob will be too slow):
 % tic
 % [IDX centroids] = kmedoids(X', numclusters);
@@ -387,52 +425,89 @@ X = [Xprmsl;Xhgt850];
 
 % %%%%%%%OR create a self-organizing map with nctool and then do a k-means on
 % %%%%%%%THAT. See if we get better performance. If we do, we can redo the
-% %%%%%%%station clustering too and bootstrap the kmeans for robustness.
+% %%%%%%%station clustering too.
 % %nctool
 % load test_net_SOM
 % X = cell2mat(net.IW)';
 % [IDX centroids] = kmeans(X',numclusters);
 % %%%%%End of that little bit. Proceed as you were:
 
-%Reshape the vectors back into maps:
+
+%Create 4D cluster centroid map arrays with indices as follows: ####################
+% (x,y,cluster,period) where
+% period 1 =    1979-2014
+%        2 =    1979-1996.5
+%        3 =    1996.5-2014
+
+%Preallocate the centroid arrays:
+clustermaps_prsml = zeros(105,99,numclusters,3);
+clustermaps_hgt = zeros(105,99,numclusters,3);
+clustermaps_airtemp = zeros(105,99,numclusters,3);
+clustermaps_counts = zeros(numclusters,97,3);
+
+% Nab the 1979-2014 centroids for the station counts:
+clustermaps_counts(:,:,1) = centroids(:,end-96:end);
+
 for m = 1:numclusters
-    clustermaps_prmsl(:,:,m) = reshape(centroids(m,1:10395),size(prmsl_anom_mb,1),size(prmsl_anom_mb,2));
-    clustermaps_hgt(:,:,m) = reshape(centroids(m,10396:end),size(hgt850_anom,1),size(hgt850_anom,2));
-    %clustermaps_hgt(:,:,m) = reshape(centroids(m,10396:end),size(hgt1000500_anom,1),size(hgt1000500_anom,2));
     m
+    %First, reshape the centroid vectors back into maps:
+    clustermaps_prmsl(:,:,m,1) = reshape(centroids(m,1:10395),size(prmsl_anom_mb,1),size(prmsl_anom_mb,2));
+    %clustermaps_hgt(:,:,m,1) = reshape(centroids(m,10396:10395+10395),size(hgt850_anom,1),size(hgt850_anom,2));
+    clustermaps_hgt(:,:,m,1) = reshape(centroids(m,10396:10395+10395),size(hgt1000500_anom,1),size(hgt1000500_anom,2));
+    %Create centroids for the surface air temperature so that we can plot the 0
+    %deg isotherm on the centroid maps!
+    clustermaps_airtempcentroids(:,:,m,1) = mean(airtemp(:,:,IDX == m),3);
+
+    
+    %Also create separate centroids for the first and second half of the
+    %study period to examine any changes within clusters over time.
+    %First half of period of study ('79 to Spring '96):
+    events_in_this_clust_and_period = IDX == m & dates' < '01-Jul-1996 00:00:00';
+    clustermaps_airtempcentroids(:,:,m,2) = mean(airtemp(:,:,events_in_this_clust_and_period),3);
+    clustermaps_prmsl(:,:,m,2) = mean(prmsl_anom_mb(:,:,events_in_this_clust_and_period),3);
+    clustermaps_hgt(:,:,m,2) = mean(hgt850_anom(:,:,events_in_this_clust_and_period),3);
+    clustermaps_counts(m,:,2) = mean(event_stationcounts_case(events_in_this_clust_and_period,:));
+    
+    %Second half of period of study (Fall '96 to 2014):
+    events_in_this_clust_and_period = IDX == m & dates' >= '01-Jul-1996 00:00:00';
+    clustermaps_airtempcentroids(:,:,m,3) = mean(airtemp(:,:,events_in_this_clust_and_period),3);
+    clustermaps_prmsl(:,:,m,3) = mean(prmsl_anom_mb(:,:,events_in_this_clust_and_period),3);
+    clustermaps_hgt(:,:,m,3) = mean(hgt850_anom(:,:,events_in_this_clust_and_period),3);
+    clustermaps_counts(m,:,3) = mean(event_stationcounts_case(events_in_this_clust_and_period,:));
+
 end
 
-% %Plot a silhouette plot to inspect whether or not 3 clusters was best:
+
+% %Plot a silhouette plot to inspect ideal number of clusters:
+% %(Note: this takes a LONG time)
 % figure(52)
 % silhouette(X',IDX)
 
-
-%Create centroids for the surface air temperature so that we can plot the 0
-%deg isotherm on the centroid maps!
-for centroidnum = 1:64
-    clustermaps_airtempcentroids(:,:,centroidnum) = mean(airtemp(:,:,IDX == centroidnum),3);
-end
 
 %%%%%%%%%%%%%%%%%%Good plot:
 %Import the shapefile:
 states = shaperead('usastatehi','UseGeoCoords',true);
 provinces = shaperead('shapefiles/province','UseGeoCoords',true);
 mexstates = shaperead('shapefiles/mexstates','UseGeoCoords',true);
-lat_lim = [30 55]; %deg N
-lon_lim = [-105 -65]; %deg W
+lat_lim = [35 52]; %deg N
+lon_lim = [-100 -65]; %deg W
 
 figure(6)
 x0=2;
 y0=2;
-width=24;
-height=8;
+width=20;
+height=12;
 set(gcf,'units','inches','position',[x0,y0,width,height])
 dim = [.1 .8 .1 .1];
 %annotation('textbox',dim,'String',current_event_def,'FitBoxToText','on','FontSize',48);
 %Loop through to do all three cluster plots:
-for z = 1:3
-    
-    subplot(1,3,z)
+% (Note: The L and H annotations get wiped out by tightmap, so we need to do these
+% plots one by one for publication)
+current_plot_idx = 0;
+for period_num = 1:3
+for current_cluster = 1:numclusters
+    current_plot_idx = current_plot_idx + 1;
+    subplot(3,numclusters,current_plot_idx)
     worldmap(lat_lim,lon_lim)
     setm(gca,'mapprojection','eqaconic')
     cptcmap('SVS_tempanomaly', 'mapping', 'scaled','flip',true);
@@ -443,13 +518,31 @@ for z = 1:3
     %pcolorm(lat,lon,prmsl,'FaceAlpha',0.8)
     
     %Plot MSL pressure:
-    [Caz haz] = contourm(lat,lon,clustermaps_prmsl(:,:,z),'LineWidth',1,'LineColor','k');
-    pcolorm(lat,lon,clustermaps_prmsl(:,:,z),'FaceAlpha',0.8)
-    
+    %pcolorm(lat,lon,clustermaps_prmsl(:,:,z),'FaceAlpha',0.8)
+    [Caz haz] = contourm(lat,lon,clustermaps_prmsl(:,:,current_cluster,period_num),'LineWidth',1,'LineColor','k');
+    pcolorm(lat,lon,clustermaps_prmsl(:,:,current_cluster,period_num),'FaceAlpha',0.6)
+
     %clabelm(Caz);
+            
+    % Plot centroids for FZRA prevalence by station:
+    fzra_prevalent_stations = clustermaps_counts(z,:,period_num);
+    fzra_prevalent_stations(fzra_prevalent_stations < prctile(fzra_prevalent_stations,75)) = NaN;
+    h_bubbs = scatterm(gca,a.StationLocations(:,1),a.StationLocations(:,2),50*fzra_prevalent_stations,'m','filled')
+    uistack(h_bubbs,'top')
+    
+    %Add the upper air geopotential heights as dotted lines:
+    [Ca ha] = contourm(lat,lon,clustermaps_hgt(:,:,current_cluster,period_num),'LineWidth',2,'LineColor','k','LineStyle',':');
+    %clabelm(Ca);
+    
+    %Lastly, add a 0 deg isotherm in a nice bold black:
+    [Cb hb] = contourm(lat,lon,clustermaps_airtempcentroids(:,:,current_cluster,period_num),[273.15 273.15],'LineWidth',2,'LineColor','k');
+
+    pause(2)
+    tightmap;
+    pause(2)
     
     %Add an "L" over the low pressure system:
-    prmsl_mb = clustermaps_prmsl(:,:,z);
+    prmsl_mb = clustermaps_prmsl(:,:,current_cluster,period_num);
     prmsl_window = prmsl_mb(lat > lat_lim(1) & lat < lat_lim(2) ...
         & lon > lon_lim(1) & lon < lon_lim(2)); %selects only inside our region
     windowmin = min(prmsl_window);
@@ -471,31 +564,21 @@ for z = 1:3
     
     caxis([-20 20]) %kPa. Sets color ramp to the range of our region.
     
+    %uistack(haz,'top')
+    uistack(h_bubbs,'top')
 
-    pause(1)
-    framem; gridm; tightmap;
-    pause(1)
-    pause(1)
-    framem; gridm; tightmap;
-    pause(1)
-    
-    %Add the upper air geopotential heights as dotted lines:
-    
-    [Ca ha] = contourm(lat,lon,clustermaps_hgt(:,:,z),'LineWidth',2,'LineColor','k','LineStyle',':');
-    clabelm(Ca);
-    
-    %Lastly, add a 0 deg isotherm in a nice bold black:
-    [Cb hb] = contourm(lat,lon,clustermaps_airtempcentroids(:,:,z),[273.15 273.15],'LineWidth',2,'LineColor','k');
-    
+
+end
 end
 
 %Add one big colorbar to the whole figure. Just add a small one and adjust
 %it.
-hp4 = get(subplot(1,3,3),'Position')
+hp4 = get(subplot(1,numclusters,3),'Position')
 c = colorbar('Position', [hp4(1)+hp4(3)+0.012  hp4(2)*1.5  0.025  hp4(2)+hp4(3)*2.5])
 c.FontSize = 18
 c.FontName = 'Helvetica'
 xlabel(c,'MSL Pressure Anomaly (mb)')
+
 
 
 
@@ -516,39 +599,116 @@ xlabel(c,'MSL Pressure Anomaly (mb)')
 %     [Y clusterpick] = min(distance);
 %     IDX_recent_orig(m) = clusterpick;   %vector of classifications into the original cluster from the 1979-1996 period
 % end
-% 
-% %Plot this stuff
-% figure(1000)
-% scatter(dates,IDX)
-% hold on
-% grid on
-% scatter(dates_recent,IDX_recent_orig)
-% xlabel('Time (years)')
-% ylabel('Cluster')
-% 
-% figure(1001)
-% % that = [sum(IDX == 1)/586*100  sum(IDX_recent_orig == 1)/625*100; ...
-% %     sum(IDX == 2)/586*100  sum(IDX_recent_orig == 2)/625*100; ...
-% %     sum(IDX == 3)/586*100  sum(IDX_recent_orig == 3)/625*100]
-% that = [sum(IDX == 1)  sum(IDX_recent_orig == 1); ...
-%     sum(IDX == 2)  sum(IDX_recent_orig == 2); ...
-%     sum(IDX == 3)  sum(IDX_recent_orig == 3)]
-% 
-% bar(that)
-% ylabel('Number of Events')
-% xlabel('Cluster')
-% legend('1979-1996','1997-2014')
-% grid on
-% 
-% 
-% 
-% 
-% 
+
+
+%Plot this stuff
+figure(1000)
+scatter(dates,IDX')
+hold on
+grid on
+scatter(dates_recent,IDX_recent_orig)
+xlabel('Time (years)')
+ylabel('Cluster')
+
+
+figure(1001)
+% that = [sum(IDX == 1)/586*100  sum(IDX_recent_orig == 1)/625*100; ...
+%     sum(IDX == 2)/586*100  sum(IDX_recent_orig == 2)/625*100; ...
+%     sum(IDX == 3)/586*100  sum(IDX_recent_orig == 3)/625*100]
+that = [sum(IDX(dates' < '01-Jul-1996 00:00:00') == 1)  sum(IDX(dates' >= '01-Jul-1996 00:00:00') == 1); ...
+        sum(IDX(dates' < '01-Jul-1996 00:00:00') == 2)  sum(IDX(dates' >= '01-Jul-1996 00:00:00') == 2); ...
+        sum(IDX(dates' < '01-Jul-1996 00:00:00') == 3)  sum(IDX(dates' >= '01-Jul-1996 00:00:00') == 3)]
+
+bar(that)
+ylabel('Number of Events')
+xlabel('Cluster')
+legend('1979-1996','1997-2014')
+grid on
 
 
 
+%% Plot individual storm maps to investigate further:
+% You can find a time to plot in event_times_case and
+% its event ID will be at the same index in event_ids_case:
+%09-Jan-1991 03:00:00
+%'06-Mar-1989 00:00:00' cyclone-anticyclone from Rauber exa
+% '15-Feb-1990 00:00:00'
+% '21-Jan-1979 06:00:00' warm front from Rauber exa
+event_index_to_plot = event_ids_case(event_times_case == '06-Mar-1989 00:00:00' ) - event_ids_case(1) -1 %e.g. '28-Dec-1992 12:00:00' is a cold air damming storm used in Rauber 2001
+IDX(event_index_to_plot)
 
+figure(7)
+x0=2;
+y0=2;
+width=16;
+height=12;
+set(gcf,'units','inches','position',[x0,y0,width,height])
+dim = [.1 .8 .1 .1];
+%annotation('textbox',dim,'String',current_event_def,'FitBoxToText','on','FontSize',48);
+% (Note: The L and H annotations get wiped out by tightmap, so we need to do these
+% plots one by one for publication)
 
+worldmap(lat_lim,lon_lim)
+setm(gca,'mapprojection','eqaconic')
+cptcmap('SVS_tempanomaly', 'mapping', 'scaled','flip',true);
+
+geoshow(states,'FaceColor',[1 1 1]);
+geoshow(provinces,'FaceColor',[1 1 1]);
+geoshow(mexstates,'FaceColor',[1 1 1]);
+
+%Plot MSL pressure:
+pcolorm(lat,lon,prmsl_anom_mb(:,:,event_index_to_plot),'FaceAlpha',0.8)
+[Caz haz] = contourm(lat,lon,prmsl_anom_mb(:,:,event_index_to_plot),'LineWidth',1,'LineColor','k');
+%pcolorm(lat,lon,prmsl_anom_mb(:,:,event_index_to_plot),'FaceAlpha',0.8)
+
+%clabelm(Caz);
+
+% Plot centroids for FZRA prevalence by station:
+fzra_prevalent_stations = event_stationcounts_case(event_index_to_plot,:);
+fzra_prevalent_stations(fzra_prevalent_stations == 0) = NaN;
+h_bubbs = scatterm(gca,a.StationLocations(:,1),a.StationLocations(:,2),50*fzra_prevalent_stations,'m','filled');
+uistack(h_bubbs,'top')
+
+%Add the upper air geopotential heights as dotted lines:
+[Ca ha] = contourm(lat,lon,hgt850_anom(:,:,event_index_to_plot),'LineWidth',2,'LineColor','k','LineStyle',':');
+%clabelm(Ca);
+
+%Lastly, add a 0 deg isotherm in a nice bold black:
+[Cb hb] = contourm(lat,lon,airtemp(:,:,event_index_to_plot),[273.15 273.15],'LineWidth',2,'LineColor','k');
+
+pause(2)
+tightmap;
+pause(2)
+
+%Add an "L" over the low pressure system:
+prmsl_mb = prmsl_anom_mb(:,:,event_index_to_plot);
+prmsl_window = prmsl_mb(lat > lat_lim(1) & lat < lat_lim(2) ...
+    & lon > lon_lim(1) & lon < lon_lim(2)); %selects only inside our region
+windowmin = min(prmsl_window);
+lattext = lat(prmsl_mb == windowmin);
+lontext = lon(prmsl_mb == windowmin);
+textindex = find(lattext > lat_lim(1) & lattext < lat_lim(2) ...
+    & lontext > lon_lim(1) & lontext < lon_lim(2));
+textm(lattext(textindex),lontext(textindex), 'L', 'FontWeight','bold','FontSize',20,'Color','r')
+
+%Add an "H" over any high pressure system (cutoff at 1020 mb)
+windowmax = max(prmsl_window);
+if windowmax > 10 %mb
+    lattext = lat(prmsl_mb == max(prmsl_window));
+    lontext = lon(prmsl_mb == max(prmsl_window));
+    textindex = find(lattext > lat_lim(1) & lattext < lat_lim(2) ...
+        & lontext > lon_lim(1) & lontext < lon_lim(2));
+    textm(lattext(textindex),lontext(textindex), 'H', 'FontWeight','bold','FontSize',20,'Color','b')
+end
+
+caxis([-20 20]) %kPa. Sets color ramp to the range of our region.
+
+%uistack(haz,'top')
+uistack(h_bubbs,'top');
+
+% Bring back the state outlines
+geoshow(states,'FaceColor',[1 1 1],'FaceAlpha',0)
+geoshow(provinces,'FaceColor',[1 1 1],'FaceAlpha',0);
 
 
 
