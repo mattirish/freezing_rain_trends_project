@@ -2,7 +2,7 @@
 %Keep the system from sleeping while this runs:
 system('caffeinate -dims &');
 
-for min_reports_per_event = 6:2:12 %4:-1:2
+for min_reports_per_event = 12:-2:6 %4:-1:2
     for max_nonevent_hrs = 12 %3:-1:1
         
         timestep = 3;               %rounds to every three hours
@@ -213,7 +213,7 @@ for min_reports_per_event = 6:2:12 %4:-1:2
         if A == 0
             nonevents = 0;
         end
-        save(strcat('eventtimes_',num2str(min_reports_per_event),num2str(max_nonevent_hrs)), ...
+        save(strcat('eventtimes_v2_',num2str(min_reports_per_event),num2str(max_nonevent_hrs)), ...
             'event_ids','event_pct_lightFZRA','event_precip','event_precip_std',...
             'event_spd','event_spd_std','event_stationcounts','event_times','nonevents');
         
@@ -278,9 +278,13 @@ for min_reports_per_event = 6:2:12 %4:-1:2
                 end
             end
             
-            %Now find the index in the prmsl files to download.
-            %We'll use the map closest to the median of the event times.
-            dates(iter) = event_times_case(floor(m-(n)/2)); %track times corresponding with maps. This is the median-time of the event.
+%             %Now find the index in the prmsl files to download.
+%             %We'll use the map closest to the median of the event times.
+%             dates(iter) = event_times_case(floor(m-(n)/2)); %track times corresponding with maps. This is the median-time of the event.
+             
+            %Or download the map closest to the hour in which the most FZRA
+            %observations occur:
+            dates(iter) = mode(event_times_case(event_ids == event_ids(m)));
             
             %Download the times vector for the year in which the midpoint time is
             %and then match it to our timestamp for the index to plot.
@@ -325,7 +329,7 @@ for min_reports_per_event = 6:2:12 %4:-1:2
         display('printing maps. Value of first pixel on this iteration:')
         prmsl_anom(1,1,1)
         % Save the maps:
-        save(strcat('maps_',num2str(min_reports_per_event),num2str(max_nonevent_hrs)), ...
+        save(strcat('maps_v2_',num2str(min_reports_per_event),num2str(max_nonevent_hrs)), ...
             'airtemp','dates','hgt1000500_anom','prmsl_anom_mb','hgt850_anom',...
             'event_times_case');
         

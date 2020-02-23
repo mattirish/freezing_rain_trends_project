@@ -2,8 +2,8 @@
 This repo contains all the MATLAB and R scripts used in the updated freezing rain/ice storms climatology of the Great Lakes region that I've been working on, along with the data needed to carry it out.
 
 ### Data
-- [a_all.mat](a_all.mat): Contains *a*, a struct containing summary data for all 98 observing stations included in the analysis
-- [b.mat](b.mat): Contains *b*, a struct containg the full timeseries of freezing rain observations for all 98 stations in the analysis
+- [a_all.mat](a_all.mat): Contains *a*, a struct containing summary data for all 97 observing stations included in the analysis
+- [b.mat](b.mat): Contains *b*, a struct containg the full timeseries of freezing rain observations for all 97 stations in the analysis
 
 ### Scripts
 - [Extraction_All_Stations.m](Extraction_All_Stations.m): Process freezing rain observations from text files in (standard ISD format)[ftp://ftp.ncdc.noaa.gov/pub/data/noaa/ISH-DVD2012/ish-abbreviated.txt] to MATLAB structs *a* and *b* (original ISD text files are too large for inclusion here—contact mairish@umich.edu if you'd like them!)
@@ -42,7 +42,7 @@ This repo contains all the MATLAB and R scripts used in the updated freezing rai
 	- [R.matlab](https://cran.r-project.org/web/packages/R.matlab/index.html) for transferring data between R and MATLAB
 	- [modifiedmk](https://cran.r-project.org/web/packages/modifiedmk/index.html) for Modified Mann-Kendall trend analysis
 - MATLAB with Mapping Toolbox
-	- [cptcmap](https://github.com/kakearney/cptcmap-pkg/tree/845bf8372ca1be0a83d7c16c05ce3ffaeb033c42)for colormaps
+	- [cptcmap](https://github.com/kakearney/cptcmap-pkg/tree/845bf8372ca1be0a83d7c16c05ce3ffaeb033c42) for colormaps
 	- [SNCTOOLS](http://mexcdf.sourceforge.net/) for downloading [NARR](https://www.esrl.noaa.gov/psd/data/gridded/data.narr.html) netCDFs via OPeNDAP
 
 All third-party R and MATLAB dependencies used in the project can be found at my other repo [here](https://github.com/mattirish/matlab_addons).
