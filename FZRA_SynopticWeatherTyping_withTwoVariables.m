@@ -380,43 +380,51 @@ xlabel(c,'MSL Pressure Anomaly (mb)')
 
 % Shape surface level pressure anomalies, 850 mb heights, and station
 % counts for each event into a really long vector:
-numclusters = 3;
+numclusters = 6;
 Xprmsl = reshape(prmsl_anom_mb,size(prmsl_anom_mb,1)*size(prmsl_anom_mb,2),size(prmsl_anom_mb,3));
 
-Xhgt850 = reshape(hgt850_anom,size(hgt850_anom,1)*size(hgt850_anom,2),size(hgt850_anom,3));
-Xhgt = reshape(hgt1000500_anom,size(hgt1000500_anom,1)*size(hgt1000500_anom,2),size(hgt1000500_anom,3));
+Xhgt = reshape(hgt850_anom,size(hgt850_anom,1)*size(hgt850_anom,2),size(hgt850_anom,3));
+%Xhgt = reshape(hgt1000500_anom,size(hgt1000500_anom,1)*size(hgt1000500_anom,2),size(hgt1000500_anom,3));
 
 event_ids_case = event_ids(event_times >= datetime(1979,1,1) & event_times < datetime(2015,1,1));
+%event_ids_case = event_ids;
 event_stationcounts_case = event_stationcounts(event_ids_case(1):event_ids_case(end),:);
 event_stationcounts_case_rep = repmat(event_stationcounts_case,1,200);
 %X = [Xprmsl;Xhgt850;event_stationcounts_case'];
 X = [Xprmsl;Xhgt;event_stationcounts_case'];
 
-%Now rescale all the variables so the pressure anomalies don't outweigh the
-%freezing rain durations:
+%Now rescale all the variables to [0,1] so the pressure anomalies don't 
+%outweigh the freezing rain durations:
 scale_factors = max(X,[],2);
 % X_scaled = X*diag(scale_factors.^(-1));
 % X_scaled(isnan(X_scaled)) = 0;
 X_scaled = bsxfun(@rdivide, X, scale_factors);
 
+min_factors = repmat(min(X,[],2),1,size(X,2));
+range_factors = repmat(max(X-min_factors,[],2),1,size(X,2));
+X_scaled = (X-min_factors) ./ range_factors;
+
 % Save this to send it to R for use in an entropy-weighted kmeans:
-save('X_for_kmeans_1000500','X','X_scaled');
+save('X_for_kmeans','X','X_scaled');
 
+% Call R script to run the ewkm:
+% system('Rscript FZRA_entropy_weighted_kmeans_clustering.R X_for_kmeans numclusters');
+load('X_for_kmeans_612_ewkm_results.mat')
 
-% Use parallel computing for many iterations to avoid high local minima in the k-means:
-% (Note: Parallel Computing Toolbox is necessary to run replicates in parallel)
-opts = statset('Display','final');
-stream = RandStream('mlfg6331_64');  % Random number stream
-options = statset('UseParallel',1,'UseSubstreams',1,...
-    'Streams',stream);
-tic; % Start stopwatch timer
-[IDX centroids] = kmeans(X_scaled',numclusters,'Options',options,'MaxIter',10000,...
-    'Display','final','Replicates',10);
-toc
-
+% % Or do it in MATLAB.
+% % Use parallel computing for many iterations to avoid high local minima in the k-means:
+% % (Note: Parallel Computing Toolbox is necessary to run replicates in parallel)
+% opts = statset('Display','final');
+% stream = RandStream('mlfg6331_64');  % Random number stream
+% options = statset('UseParallel',1,'UseSubstreams',1,...
+%     'Streams',stream);
+% tic; % Start stopwatch timer
+% [IDX centroids] = kmeans(X_scaled',numclusters,'Options',options,'MaxIter',10000,...
+%     'Display','final','Replicates',10);
+% toc
 
 %Rescale the centroids:
-centroids = centroids .* repmat(scale_factors,1,numclusters)';
+centroids = (centroids .* repmat(range_factors(:,1)',numclusters,1)) + repmat(min_factors(:,1)',numclusters,1) ;
 
 %Try it with k-medoids! (Prob will be too slow):
 % tic
@@ -525,7 +533,7 @@ for current_cluster = 1:numclusters
     %clabelm(Caz);
             
     % Plot centroids for FZRA prevalence by station:
-    fzra_prevalent_stations = clustermaps_counts(z,:,period_num);
+    fzra_prevalent_stations = clustermaps_counts(current_cluster,:,period_num);
     fzra_prevalent_stations(fzra_prevalent_stations < prctile(fzra_prevalent_stations,75)) = NaN;
     h_bubbs = scatterm(gca,a.StationLocations(:,1),a.StationLocations(:,2),50*fzra_prevalent_stations,'m','filled')
     uistack(h_bubbs,'top')
@@ -601,28 +609,26 @@ xlabel(c,'MSL Pressure Anomaly (mb)')
 % end
 
 
-%Plot this stuff
-figure(1000)
-scatter(dates,IDX')
-hold on
-grid on
-scatter(dates_recent,IDX_recent_orig)
-xlabel('Time (years)')
-ylabel('Cluster')
+% %Plot this stuff
+% figure(1000)
+% scatter(dates,IDX')
+% hold on
+% grid on
+% scatter(dates_recent,IDX_recent_orig)
+% xlabel('Time (years)')
+% ylabel('Cluster')
 
+
+cluster_event_sums = zeros(numclusters,2);
+for this_clust = 1:numclusters
+    cluster_event_sums(this_clust,:) = [sum(IDX(dates' < '01-Jul-1996 00:00:00') == this_clust)  sum(IDX(dates' >= '01-Jul-1996 00:00:00') == this_clust)];
+end
 
 figure(1001)
-% that = [sum(IDX == 1)/586*100  sum(IDX_recent_orig == 1)/625*100; ...
-%     sum(IDX == 2)/586*100  sum(IDX_recent_orig == 2)/625*100; ...
-%     sum(IDX == 3)/586*100  sum(IDX_recent_orig == 3)/625*100]
-that = [sum(IDX(dates' < '01-Jul-1996 00:00:00') == 1)  sum(IDX(dates' >= '01-Jul-1996 00:00:00') == 1); ...
-        sum(IDX(dates' < '01-Jul-1996 00:00:00') == 2)  sum(IDX(dates' >= '01-Jul-1996 00:00:00') == 2); ...
-        sum(IDX(dates' < '01-Jul-1996 00:00:00') == 3)  sum(IDX(dates' >= '01-Jul-1996 00:00:00') == 3)]
-
-bar(that)
+bar(cluster_event_sums)
 ylabel('Number of Events')
 xlabel('Cluster')
-legend('1979-1996','1997-2014')
+legend('1979-Spring 1996','Autumn 1996-2014')
 grid on
 
 
