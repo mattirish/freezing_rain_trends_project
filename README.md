@@ -35,12 +35,14 @@ This repo contains all the MATLAB and R scripts used in the updated freezing rai
 8. Analyze trends in the dynamics of freezing rain events and ice storms by pulling synoptic weather data from the NARR reanalysis and carrying out a k-means clustering of synoptic conditions during events.
 	- [FZRA_SynopticWeatherTyping_withTwoVariables.m](FZRA_SynopticWeatherTyping_withTwoVariables.m)
 	- [FZRA_NARR_Reanalysis.m](FZRA_NARR_Reanalysis.m)
+	- [FZRA_entropy_weighted_kmeans_clustering.R](FZRA_entropy_weighted_kmeans_clustering.R)
 
 ### Software Requirements
 
 - R
 	- [R.matlab](https://cran.r-project.org/web/packages/R.matlab/index.html) for transferring data between R and MATLAB
 	- [modifiedmk](https://cran.r-project.org/web/packages/modifiedmk/index.html) for Modified Mann-Kendall trend analysis
+	- [wskm](https://cran.r-project.org/web/packages/wskm/index.html) for classifying ice storms using entropy-weighted k-means clustering
 - MATLAB with Mapping Toolbox
 	- [cptcmap](https://github.com/kakearney/cptcmap-pkg/tree/845bf8372ca1be0a83d7c16c05ce3ffaeb033c42) for colormaps
 	- [SNCTOOLS](http://mexcdf.sourceforge.net/) for downloading [NARR](https://www.esrl.noaa.gov/psd/data/gridded/data.narr.html) netCDFs via OPeNDAP
