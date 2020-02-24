@@ -2,7 +2,7 @@
 %Keep the system from sleeping while this runs:
 system('caffeinate -dims &');
 
-for min_reports_per_event = 12:-2:6 %4:-1:2
+for min_reports_per_event = [3 5 6 10] %4:-1:2
     for max_nonevent_hrs = 12 %3:-1:1
         
         timestep = 3;               %rounds to every three hours
@@ -19,6 +19,7 @@ for min_reports_per_event = 12:-2:6 %4:-1:2
         clear total_spd                %for each record, keep the wind and precip
         clear total_precip
         clear total_islightFZRA        %for each record, keep the intensity from both the manual and auto obs (if any). 1 = light, 0 = mod or heavy
+        clear dates
         
         %Initialize to create the variables:
         m = 1;
@@ -94,9 +95,9 @@ for min_reports_per_event = 12:-2:6 %4:-1:2
         
         
         %--------------------------------------------------------------------------
-        %% Now apply the minimum total reports threshold to define the number
-        %of reports needed to classify it as a FZRA "event" and then
-        %create a companion vector that classifies each event in increasing order.
+        %% Now apply the minimum per-station reports threshold to define the number
+        %of reports needed to classify it as an ice storm and then
+        %create a companion vector that classifies each event by index in increasing order.
         
         %Work through each event.
         %initialize.
@@ -161,10 +162,11 @@ for min_reports_per_event = 12:-2:6 %4:-1:2
             
             
             
-            %Only include events with at least the min. number of reports.
+            %Only include events with at least the min. number of reports at at least one station.
             %If this event is included, record all its obs stuff:
             %Otherwise, skip them and don't add them to the output:
-            if n >= min_reports_per_event
+            if any(obs.stationcounts >= min_reports_per_event)
+            %if n >= min_reports_per_event
                 %Round each observation to nearest timestep. This allows for use
                 %directly with reanalysis or rawinsonde data:
                 obs.time_unique = datenum(obs.time); %now in serial date, where unit is num of days.
@@ -213,7 +215,7 @@ for min_reports_per_event = 12:-2:6 %4:-1:2
         if A == 0
             nonevents = 0;
         end
-        save(strcat('eventtimes_v2_',num2str(min_reports_per_event),num2str(max_nonevent_hrs)), ...
+        save(strcat('eventtimes_v3_',num2str(min_reports_per_event),num2str(max_nonevent_hrs)), ...
             'event_ids','event_pct_lightFZRA','event_precip','event_precip_std',...
             'event_spd','event_spd_std','event_stationcounts','event_times','nonevents');
         
@@ -329,7 +331,7 @@ for min_reports_per_event = 12:-2:6 %4:-1:2
         display('printing maps. Value of first pixel on this iteration:')
         prmsl_anom(1,1,1)
         % Save the maps:
-        save(strcat('maps_v2_',num2str(min_reports_per_event),num2str(max_nonevent_hrs)), ...
+        save(strcat('maps_v3_',num2str(min_reports_per_event),num2str(max_nonevent_hrs)), ...
             'airtemp','dates','hgt1000500_anom','prmsl_anom_mb','hgt850_anom',...
             'event_times_case');
         
