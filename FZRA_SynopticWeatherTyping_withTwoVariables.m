@@ -380,7 +380,7 @@ xlabel(c,'MSL Pressure Anomaly (mb)')
 
 % Shape surface level pressure anomalies, 850 mb heights, and station
 % counts for each event into a really long vector:
-numclusters = 6;
+numclusters = 3;
 Xprmsl = reshape(prmsl_anom_mb,size(prmsl_anom_mb,1)*size(prmsl_anom_mb,2),size(prmsl_anom_mb,3));
 
 Xhgt = reshape(hgt850_anom,size(hgt850_anom,1)*size(hgt850_anom,2),size(hgt850_anom,3));
@@ -405,11 +405,11 @@ range_factors = repmat(max(X-min_factors,[],2),1,size(X,2));
 X_scaled = (X-min_factors) ./ range_factors;
 
 % Save this to send it to R for use in an entropy-weighted kmeans:
-save('X_for_kmeans','X','X_scaled');
+save('X_for_kmeans_312','X','X_scaled');
 
 % Call R script to run the ewkm:
 % system('Rscript FZRA_entropy_weighted_kmeans_clustering.R X_for_kmeans numclusters');
-load('X_for_kmeans_612_ewkm_results.mat')
+load('X_for_kmeans_312_ewkm_results.mat')
 
 % % Or do it in MATLAB.
 % % Use parallel computing for many iterations to avoid high local minima in the k-means:
@@ -464,21 +464,21 @@ for m = 1:numclusters
     clustermaps_hgt(:,:,m,1) = reshape(centroids(m,10396:10395+10395),size(hgt1000500_anom,1),size(hgt1000500_anom,2));
     %Create centroids for the surface air temperature so that we can plot the 0
     %deg isotherm on the centroid maps!
-    clustermaps_airtempcentroids(:,:,m,1) = mean(airtemp(:,:,IDX == m),3);
+    clustermaps_airtemp(:,:,m,1) = mean(airtemp(:,:,IDX == m),3);
 
     
     %Also create separate centroids for the first and second half of the
     %study period to examine any changes within clusters over time.
     %First half of period of study ('79 to Spring '96):
     events_in_this_clust_and_period = IDX == m & dates' < '01-Jul-1996 00:00:00';
-    clustermaps_airtempcentroids(:,:,m,2) = mean(airtemp(:,:,events_in_this_clust_and_period),3);
+    clustermaps_airtemp(:,:,m,2) = mean(airtemp(:,:,events_in_this_clust_and_period),3);
     clustermaps_prmsl(:,:,m,2) = mean(prmsl_anom_mb(:,:,events_in_this_clust_and_period),3);
     clustermaps_hgt(:,:,m,2) = mean(hgt850_anom(:,:,events_in_this_clust_and_period),3);
     clustermaps_counts(m,:,2) = mean(event_stationcounts_case(events_in_this_clust_and_period,:));
     
     %Second half of period of study (Fall '96 to 2014):
     events_in_this_clust_and_period = IDX == m & dates' >= '01-Jul-1996 00:00:00';
-    clustermaps_airtempcentroids(:,:,m,3) = mean(airtemp(:,:,events_in_this_clust_and_period),3);
+    clustermaps_airtemp(:,:,m,3) = mean(airtemp(:,:,events_in_this_clust_and_period),3);
     clustermaps_prmsl(:,:,m,3) = mean(prmsl_anom_mb(:,:,events_in_this_clust_and_period),3);
     clustermaps_hgt(:,:,m,3) = mean(hgt850_anom(:,:,events_in_this_clust_and_period),3);
     clustermaps_counts(m,:,3) = mean(event_stationcounts_case(events_in_this_clust_and_period,:));
@@ -535,6 +535,7 @@ for current_cluster = 1:numclusters
     % Plot centroids for FZRA prevalence by station:
     fzra_prevalent_stations = clustermaps_counts(current_cluster,:,period_num);
     fzra_prevalent_stations(fzra_prevalent_stations < prctile(fzra_prevalent_stations,75)) = NaN;
+    fzra_prevalent_stations(fzra_prevalent_stations == 0) = NaN;
     h_bubbs = scatterm(gca,a.StationLocations(:,1),a.StationLocations(:,2),50*fzra_prevalent_stations,'m','filled')
     uistack(h_bubbs,'top')
     
@@ -543,11 +544,11 @@ for current_cluster = 1:numclusters
     %clabelm(Ca);
     
     %Lastly, add a 0 deg isotherm in a nice bold black:
-    [Cb hb] = contourm(lat,lon,clustermaps_airtempcentroids(:,:,current_cluster,period_num),[273.15 273.15],'LineWidth',2,'LineColor','k');
+    [Cb hb] = contourm(lat,lon,clustermaps_airtemp(:,:,current_cluster,period_num),[273.15 273.15],'LineWidth',2,'LineColor','k');
 
-    pause(2)
+    pause(1)
     tightmap;
-    pause(2)
+    pause(1)
     
     %Add an "L" over the low pressure system:
     prmsl_mb = clustermaps_prmsl(:,:,current_cluster,period_num);
