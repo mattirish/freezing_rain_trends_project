@@ -18,9 +18,15 @@ MonthFreq_yearly_rel_series_domain_sum <- apply(MonthFreq_yearly_rel_series,2, s
 avg_changepoints <- e.divisive(as.matrix(colMeans(YearFreq_rel,na.rm= T)), sig.lvl=.999, R=199, k=NULL, min.size=11, alpha=1)
 
 ## Plot the domain average and means across the changepoint:
+end_yr_of_first_period <- seq(1976,2014)[avg_changepoints$estimates[2]-1]
+period1_avg <- mean(colMeans(YearFreq_rel,na.rm= T)[1:avg_changepoints$estimates[2]-1])
+period2_avg <- mean(colMeans(YearFreq_rel,na.rm= T)[avg_changepoints$estimates[2]:39])
+sprintf('End year of first period is %s and p = %s.',end_yr_of_first_period,avg_changepoints$p.values)
+sprintf('Period 1 avg: %s',period1_avg)
+sprintf('Period 2 avg: %s',period2_avg)
 plot(data.frame(seq(1976,2014),colMeans(YearFreq_rel,na.rm= T)),type='l',xlab="Year",ylab="Hours of Freezing Rain per Year")
-lines(data.frame(seq(1976,1994),rep(mean(colMeans(YearFreq_rel,na.rm= T)[1:18]),19)),col="blue")
-lines(data.frame(seq(1995,2014),rep(mean(colMeans(YearFreq_rel,na.rm= T)[19:39]),20)),col="red")
+lines(data.frame(seq(1976,end_yr_of_first_period),rep(period1_avg,avg_changepoints$estimates[2]-1)),col="blue")
+lines(data.frame(seq(end_yr_of_first_period+1,2014),rep(period2_avg,40-avg_changepoints$estimates[2])),col="red")
 
 avg_changepoints_monthly <- e.divisive(as.matrix(colMeans(MonthFreq_yearly_rel_series,na.rm= T)), sig.lvl=.8, R=199, k=NULL, min.size=48, alpha=1)
 
