@@ -9,6 +9,8 @@ load a_all.mat %contains a, the batch summary data for all 98 stations
 %load b_fixedcoords.mat %contains b, the full dataset of FZRA events for each station.
 load b.mat %contains b, the full dataset of FZRA events for each station. *fixed b file. coords are fixed too. can prob delete b_fixedcoords
 
+load FZRA_durations.mat %contains average local event durations
+load FZRA_intensities.mat %contains average observation intensities as % of total observations light FZRA
 load yearly_trends.mat %contains frequency trends calculated in R using modified Mann-Kendall test
 load yearly_trends_duration.mat %contains duration trends calculated in R using modified Mann-Kendall test
 
@@ -16,6 +18,14 @@ load yearly_trends_duration.mat %contains duration trends calculated in R using 
 %load numobsperyear.mat %contains number of observations per year at each station for each region
 
 %cell2mat(struct2cell(structfun (@(x) x.coords, b, 'UniformOutput', false)))
+
+
+%% QA-QC
+% Plot a heatmap of frequencies, durations, intensities to visually inspect for changepoints, etc:
+image([1976:2014],[1:97],a.YearFreq_rel,'CDataMapping','scaled')    %total hours of FZRA
+image([1976:2014],[1:97],mediandurations,'CDataMapping','scaled')   %median local duration of FZRA events
+image([1976:2014],[1:97],meandurations,'CDataMapping','scaled')     %mean local duration of FZRA events
+image([1976:2014],[1:97],pct_islightFZRA,'CDataMapping','scaled')   %percent of total observations that are light precip rather than moderate or heavy
 
 
 %% Initial mapping and wind map
@@ -34,21 +44,34 @@ greatlakes = shaperead('shapefiles/Great_Lakes','UseGeoCoords',true);
 
 %Let's plot this along with the stations to make sure we've got the coastline situated correctly.
 figure(1)
-ax = worldmap(lat_lim,lon_lim) %plots empty axes
+ax1 = worldmap(lat_lim,lon_lim)
+colormap(ax1, flipud(gray(256)))
+caxis([-20 1400])
+%Plot DEM:
+elev_ax = geoshow(ax1,Z_elev, refvec_elev, 'DisplayType', 'texturemap');
+geoshow(lakes,'FaceColor',[1 1 1])
+geoshow(greatlakes,'FaceColor',[1 1 1])
+ax2 = axes;
+axis(ax2,'off')
+axes(ax2)
+bubb_ax = worldmap(lat_lim,lon_lim)
 title('Wind During FZRA Events in the Great Lakes');
-geoshow(states,'FaceColor',[.5 1 .5])
-geoshow(provinces,'FaceColor',[.5 1 .5])
-framem('ffacecolor',[.5 .7 .9]); %shows water as blue
-plotm(a.StationLocations(:,1),a.StationLocations(:,2),'r+') %plots measurement stations with red star
+hold on
+transparentshapes = makesymbolspec('Polygon',{'Default','FaceAlpha',0});
+%Plot state and province outlines:
+geoshow(states,'SymbolSpec',transparentshapes)
+geoshow(provinces,'SymbolSpec',transparentshapes)
+%framem('ffacecolor',[.5 .7 .9]); %shows water as blue
+%plotm(a.StationLocations(:,1),a.StationLocations(:,2),'r+') %plots measurement stations with red star
 % mstruct = gcm; %can check current projection with this. worldmap makes it
 % an 'eqdconic'. Maybe change out for Albers Great Lakes
 %Fix the wind dirs:
-%quiverm(a.StationLocations(:,1)',a.StationLocations(:,2)',cosd(-a.WindDir).*a.WindSpeed,sind(-a.WindDir).*a.WindSpeed,0.05);
+quiverm(a.StationLocations(:,1)',a.StationLocations(:,2)',cosd(-a.WindDir).*a.WindSpeed,sind(-a.WindDir).*a.WindSpeed,0.4);
 
-%Plot the station numbers as I have them on the map:
-for m = 1:length(a.StationLocations)
-    textm(a.StationLocations(m,1),a.StationLocations(m,2),num2str(m))
-end
+% %Plot the station numbers as I have them on the map:
+% for m = 1:length(a.StationLocations)
+%     textm(a.StationLocations(m,1),a.StationLocations(m,2),num2str(m))
+% end
 
 xlabel('Longitude (deg W)')
 ylabel('Latitude (deg N)')
