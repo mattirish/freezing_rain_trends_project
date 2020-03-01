@@ -7,26 +7,42 @@ library(R.matlab)
 library(ggplot2)
 
 setwd('/Users/mattirish/Documents/MATLAB/freezing_rain_trends_project')
+
+#Load frequency timeseries:
 a_all <- readMat("a_all.mat")
 YearFreq_rel <- a_all[["a"]][[11]]
 YearFreq_rel_domain_avg <- apply(YearFreq_rel,2, median, na.rm = T)
 MonthFreq_yearly_rel_series <-  a_all[["a"]][[12]]
 MonthFreq_yearly_rel_series_domain_avg <- apply(MonthFreq_yearly_rel_series,2, median, na.rm = T) #Domain average freezing rain for every month in series
-MonthFreq_yearly_rel_series_domain_sum <- apply(MonthFreq_yearly_rel_series,2, sum, na.rm = T) #Domain average freezing rain for every month in series
+MonthFreq_yearly_rel_series_domain_sum <- apply(MonthFreq_yearly_rel_series,2, sum, na.rm = T) #Domain sum of freezing rain for every month in series
 
-# Do a changepoint detection on the yearly frequencies across the region and at each station:
-avg_changepoints <- e.divisive(as.matrix(colMeans(YearFreq_rel,na.rm= T)), sig.lvl=.999, R=199, k=NULL, min.size=11, alpha=1)
+# Load duration timeseries:
+fzra_durations <- readMat("FZRA_durations.mat")
+meandurations <- fzra_durations[["meandurations"]]
+mediandurations <- fzra_durations[["mediandurations"]]
+mediandurations_domain_avg <- apply(mediandurations,2, median, na.rm = T)
+
+# Load intensity timeseries:
+fzra_intensities <- readMat("FZRA_intensities.mat")
+pct_islightFZRA <- fzra_intensities[["pct.islightFZRA"]]
+pct_islightFZRA_domain_avg <- apply(pct_islightFZRA,2, median, na.rm = T)
+
+# Do a changepoint detection on the yearly frequencies/durations/intensities across the region and at each station:
+variable_to_test <- pct_islightFZRA #either YearFreq_rel, meandurations, mediandurations, or pct_islightFZRA
+avg_changepoints <- e.divisive(as.matrix(colMeans(variable_to_test,na.rm= T)), sig.lvl=.999, R=199, k=NULL, min.size=11, alpha=1)
 
 ## Plot the domain average and means across the changepoint:
 end_yr_of_first_period <- seq(1976,2014)[avg_changepoints$estimates[2]-1]
-period1_avg <- mean(colMeans(YearFreq_rel,na.rm= T)[1:avg_changepoints$estimates[2]-1])
-period2_avg <- mean(colMeans(YearFreq_rel,na.rm= T)[avg_changepoints$estimates[2]:39])
+period1_avg <- mean(colMeans(variable_to_test,na.rm= T)[1:avg_changepoints$estimates[2]-1])
+period2_avg <- mean(colMeans(variable_to_test,na.rm= T)[avg_changepoints$estimates[2]:39])
 sprintf('End year of first period is %s and p = %s.',end_yr_of_first_period,avg_changepoints$p.values)
 sprintf('Period 1 avg: %s',period1_avg)
 sprintf('Period 2 avg: %s',period2_avg)
-plot(data.frame(seq(1976,2014),colMeans(YearFreq_rel,na.rm= T)),type='l',xlab="Year",ylab="Hours of Freezing Rain per Year")
+plot(data.frame(seq(1976,2014),colMeans(variable_to_test,na.rm= T)),type='l',xlab="Year",ylab="FZRA Variable", panel.first=grid())
+grid (4,NULL, lty = 10, col = "cornsilk2") 
 lines(data.frame(seq(1976,end_yr_of_first_period),rep(period1_avg,avg_changepoints$estimates[2]-1)),col="blue")
 lines(data.frame(seq(end_yr_of_first_period+1,2014),rep(period2_avg,40-avg_changepoints$estimates[2])),col="red")
+axis(1, at = seq(1980,2010,5))
 
 avg_changepoints_monthly <- e.divisive(as.matrix(colMeans(MonthFreq_yearly_rel_series,na.rm= T)), sig.lvl=.8, R=199, k=NULL, min.size=48, alpha=1)
 
